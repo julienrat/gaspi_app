@@ -1,5 +1,7 @@
 # Jeu Drag & Drop — Configuration
 
+GitHub Pages : https://julienrat.github.io/gaspi_app/
+
 Ce projet est piloté par `config.json`. Le fichier doit rester **JSON strict** (pas de commentaires).
 
 ## Sections principales
