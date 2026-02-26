@@ -118,6 +118,16 @@ const physics = {
   cards: new Map(),
 };
 
+const pointerDrag = {
+  active: false,
+  pointerId: null,
+  card: null,
+  ghost: null,
+  offsetX: 0,
+  offsetY: 0,
+  overEl: null,
+};
+
 const setCssVar = (name, value) => {
   document.documentElement.style.setProperty(name, value);
 };
@@ -360,6 +370,25 @@ const showNextCard = () => {
   if (!next) return;
   next.dataset.seq = 'active';
   tray.appendChild(next);
+};
+
+const clearOverState = () => {
+  if (pointerDrag.overEl) {
+    pointerDrag.overEl.classList.remove('is-over');
+    pointerDrag.overEl = null;
+  }
+};
+
+const updatePointerOver = (clientX, clientY) => {
+  const el = document.elementFromPoint(clientX, clientY);
+  const target = el?.closest('.dropzone, .tray') || null;
+  if (target !== pointerDrag.overEl) {
+    clearOverState();
+    if (target) {
+      target.classList.add('is-over');
+      pointerDrag.overEl = target;
+    }
+  }
 };
 
 const getGravityConfig = () => state.config.layout.dropzones.gravity || {};
@@ -644,6 +673,69 @@ const wireCard = (card) => {
       card._dragGhost = null;
     }
   });
+
+  card.addEventListener('pointerdown', (event) => {
+    if (state.isTimeUp) return;
+    if (event.pointerType === 'mouse') return;
+    event.preventDefault();
+
+    pointerDrag.active = true;
+    pointerDrag.pointerId = event.pointerId;
+    pointerDrag.card = card;
+    pointerDrag.ghost = buildDragGhost(card);
+    pointerDrag.ghost.classList.add('pointer-ghost');
+    document.body.appendChild(pointerDrag.ghost);
+
+    const rect = card.getBoundingClientRect();
+    pointerDrag.offsetX = event.clientX - rect.left;
+    pointerDrag.offsetY = event.clientY - rect.top;
+
+    card.setPointerCapture(event.pointerId);
+    card.classList.add('is-dragging');
+    pointerDrag.ghost.style.left = `${event.clientX - pointerDrag.offsetX}px`;
+    pointerDrag.ghost.style.top = `${event.clientY - pointerDrag.offsetY}px`;
+    updatePointerOver(event.clientX, event.clientY);
+  });
+
+  card.addEventListener('pointermove', (event) => {
+    if (!pointerDrag.active || pointerDrag.pointerId !== event.pointerId) return;
+    pointerDrag.ghost.style.left = `${event.clientX - pointerDrag.offsetX}px`;
+    pointerDrag.ghost.style.top = `${event.clientY - pointerDrag.offsetY}px`;
+    updatePointerOver(event.clientX, event.clientY);
+  });
+
+  card.addEventListener('pointerup', (event) => {
+    if (!pointerDrag.active || pointerDrag.pointerId !== event.pointerId) return;
+    clearOverState();
+
+    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest(
+      '.dropzone, .tray'
+    );
+    if (target?.classList.contains('dropzone')) {
+      dropCardToZone(pointerDrag.card, target, event.clientX, event.clientY);
+    } else if (target?.classList.contains('tray')) {
+      dropCardToTray(pointerDrag.card);
+    }
+
+    pointerDrag.card.classList.remove('is-dragging');
+    pointerDrag.card.releasePointerCapture(event.pointerId);
+    pointerDrag.ghost.remove();
+    pointerDrag.active = false;
+    pointerDrag.pointerId = null;
+    pointerDrag.card = null;
+    pointerDrag.ghost = null;
+  });
+
+  card.addEventListener('pointercancel', () => {
+    if (!pointerDrag.active) return;
+    clearOverState();
+    pointerDrag.card?.classList.remove('is-dragging');
+    pointerDrag.ghost?.remove();
+    pointerDrag.active = false;
+    pointerDrag.pointerId = null;
+    pointerDrag.card = null;
+    pointerDrag.ghost = null;
+  });
 };
 
 const handleDragOver = (event) => {
@@ -683,24 +775,17 @@ const removeScoring = (cardId) => {
   state.placements.delete(cardId);
 };
 
-const handleDropToZone = (event) => {
-  if (state.isTimeUp) return;
-  event.preventDefault();
-  const zone = event.currentTarget;
-  zone.classList.remove('is-over');
-
-  const cardId = event.dataTransfer.getData('text/plain');
-  const card = document.getElementById(cardId);
-  if (!card) return;
-
+const dropCardToZone = (card, zone, clientX, clientY) => {
+  if (!card || !zone) return;
   const wasActive = card.dataset.seq === 'active';
+  zone.classList.remove('is-over');
   zone.appendChild(card);
   zone.classList.add('has-items');
-  applyScoring(cardId, zone.dataset.zone);
+  applyScoring(card.id, zone.dataset.zone);
   updateAllZones(card);
   if (isPhysicsMode()) {
     physics.cards.delete(card);
-    startPhysicsDrop(card, zone, event.clientX, event.clientY);
+    startPhysicsDrop(card, zone, clientX, clientY);
   }
   if (wasActive) {
     delete card.dataset.seq;
@@ -717,15 +802,8 @@ const handleDropToZone = (event) => {
   );
 };
 
-const handleDropToTray = (event) => {
-  if (state.isTimeUp) return;
-  event.preventDefault();
-  tray.classList.remove('is-over');
-
-  const cardId = event.dataTransfer.getData('text/plain');
-  const card = document.getElementById(cardId);
-  if (!card) return;
-
+const dropCardToTray = (card) => {
+  if (!card) return false;
   const current = tray.querySelector('.card');
   if (current && current !== card) {
     tray.animate(
@@ -737,14 +815,15 @@ const handleDropToTray = (event) => {
       ],
       { duration: 200 }
     );
-    return;
+    return false;
   }
 
+  tray.classList.remove('is-over');
   tray.appendChild(card);
   card.dataset.seq = 'active';
   physics.cards.delete(card);
   resetCardLayout(card);
-  removeScoring(cardId);
+  removeScoring(card.id);
   updateAllZones();
 
   card.classList.add('just-dropped');
@@ -755,6 +834,30 @@ const handleDropToTray = (event) => {
     },
     { once: true }
   );
+  return true;
+};
+
+const handleDropToZone = (event) => {
+  if (state.isTimeUp) return;
+  event.preventDefault();
+  const zone = event.currentTarget;
+
+  const cardId = event.dataTransfer.getData('text/plain');
+  const card = document.getElementById(cardId);
+  if (!card) return;
+
+  dropCardToZone(card, zone, event.clientX, event.clientY);
+};
+
+const handleDropToTray = (event) => {
+  if (state.isTimeUp) return;
+  event.preventDefault();
+
+  const cardId = event.dataTransfer.getData('text/plain');
+  const card = document.getElementById(cardId);
+  if (!card) return;
+
+  dropCardToTray(card);
 };
 
 const wireDropzone = (zone) => {

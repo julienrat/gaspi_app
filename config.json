@@ -9,7 +9,7 @@
   "hud": {
     "fontFamily": "\"Oxanium\", \"Segoe UI\", system-ui, sans-serif",
     "color": "#000000",
-    "fontSize": "5rem",
+    "fontSize": "3rem",
     "showScoreBackground": false,
     "showTimerBackground": false,
     "showScoreBorder": false,
@@ -64,8 +64,8 @@
       "zones": [
         { "id": "1", "label": "Zone 1", "width": 1050, "height": 380, "position": { "top": 1025, "left": 2300 } },
         { "id": "2", "label": "Zone 2", "width": 1050, "height": 380, "position": { "top": 1477, "left": 2300 } },
-        { "id": "3", "label": "Zone 3", "width": 1050, "height": 380, "position": { "top": 1800, "left": 2300 } },
-        { "id": "4", "label": "Zone 4", "width": 1050, "height": 380, "position": { "top": 2130, "left": 2300 } }
+        { "id": "3", "label": "Zone 3", "width": 1050, "height": 380, "position": { "top": 1743, "left": 3553 } },
+        { "id": "4", "label": "Zone 4", "width": 1050, "height": 380, "position": { "top": 2642, "left": 2300 } }
       ]
     }
   },

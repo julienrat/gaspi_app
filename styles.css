@@ -167,6 +167,7 @@ body {
   color: #081225;
   cursor: grab;
   user-select: none;
+  touch-action: none;
   border: 2px solid rgba(255, 255, 255, 0.28);
   transition: transform 140ms ease, box-shadow 140ms ease, opacity 120ms ease;
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.3);
@@ -300,6 +301,13 @@ body.hide-zone-labels .dropzone.has-items .zone-label {
   pointer-events: none;
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.35);
   display: block;
+}
+
+.drag-ghost.pointer-ghost {
+  position: fixed;
+  z-index: 9999;
+  top: 0;
+  left: 0;
 }
 
 .drag-ghost img {
