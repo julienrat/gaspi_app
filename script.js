@@ -316,6 +316,44 @@ const setCardVisuals = (card, data) => {
   }
 };
 
+const buildDragGhost = (card) => {
+  const ghost = document.createElement('div');
+  ghost.classList.add('drag-ghost');
+  ghost.style.width = `${sx(state.config.layout.cards.zoneWidth)}px`;
+  ghost.style.height = `${sy(state.config.layout.cards.zoneHeight)}px`;
+  ghost.style.margin = '0';
+  ghost.style.transform = 'none';
+  ghost.style.position = 'absolute';
+  ghost.style.top = '-1000px';
+  ghost.style.left = '-1000px';
+  ghost.style.borderRadius = '8px';
+  ghost.style.fontSize = '0.85rem';
+  ghost.style.opacity = '1';
+
+  const src = card.dataset.src;
+  const computedBg = getComputedStyle(card).backgroundColor;
+  const color = card.dataset.color || card.style.backgroundColor || computedBg;
+  if (color && color !== 'rgba(0, 0, 0, 0)') {
+    ghost.style.backgroundColor = color;
+  }
+
+  if (src) {
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = '';
+    img.draggable = false;
+    ghost.appendChild(img);
+  } else {
+    ghost.style.display = 'grid';
+    ghost.style.placeItems = 'center';
+    ghost.style.color = card.style.color || '#081225';
+    ghost.style.border = '2px solid rgba(255, 255, 255, 0.28)';
+    ghost.textContent = card.textContent || '';
+  }
+
+  return ghost;
+};
+
 const showNextCard = () => {
   if (tray.querySelector('.card')) return;
   const next = state.queue.shift();
@@ -586,17 +624,7 @@ const wireCard = (card) => {
     event.dataTransfer.setData('text/plain', card.id);
     event.dataTransfer.effectAllowed = 'move';
 
-    const ghost = card.cloneNode(true);
-    ghost.classList.add('drag-ghost');
-    ghost.style.width = `${sx(state.config.layout.cards.zoneWidth)}px`;
-    ghost.style.height = `${sy(state.config.layout.cards.zoneHeight)}px`;
-    ghost.style.margin = '0';
-    ghost.style.transform = 'none';
-    ghost.style.position = 'absolute';
-    ghost.style.top = '-1000px';
-    ghost.style.left = '-1000px';
-    ghost.style.borderRadius = '8px';
-    ghost.style.fontSize = '0.85rem';
+    const ghost = buildDragGhost(card);
     document.body.appendChild(ghost);
 
     const offsetX = Math.round(sx(state.config.layout.cards.zoneWidth) / 2);

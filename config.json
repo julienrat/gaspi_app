@@ -83,7 +83,7 @@
   "timer": {
     "seconds": 90,
     "autoStart": true,
-    "position": { "top": 24, "left": 200 }
+    "position": { "top": 24, "left": 2000 }
   },
   "scoring": {
     "correct": 10,
