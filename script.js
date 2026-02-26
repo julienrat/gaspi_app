@@ -128,6 +128,8 @@ const pointerDrag = {
   overEl: null,
 };
 
+let fullscreenRequested = false;
+
 const setCssVar = (name, value) => {
   document.documentElement.style.setProperty(name, value);
 };
@@ -161,6 +163,22 @@ const applyHudPositions = (config) => {
   resetHudCard(timerCard);
   if (scorePos) applyHudCardPosition(scoreCard, scorePos);
   if (timerPos) applyHudCardPosition(timerCard, timerPos);
+};
+
+const requestFullscreenOnce = async () => {
+  if (fullscreenRequested) return;
+  fullscreenRequested = true;
+
+  const root = document.documentElement;
+  try {
+    if (root.requestFullscreen) {
+      await root.requestFullscreen();
+    } else if (root.webkitRequestFullscreen) {
+      root.webkitRequestFullscreen();
+    }
+  } catch {
+    // Ignore if fullscreen is blocked by the browser.
+  }
 };
 
 const computeScale = (config) => {
@@ -678,6 +696,7 @@ const wireCard = (card) => {
     if (state.isTimeUp) return;
     if (event.pointerType === 'mouse') return;
     event.preventDefault();
+    requestFullscreenOnce();
 
     pointerDrag.active = true;
     pointerDrag.pointerId = event.pointerId;
@@ -686,9 +705,10 @@ const wireCard = (card) => {
     pointerDrag.ghost.classList.add('pointer-ghost');
     document.body.appendChild(pointerDrag.ghost);
 
-    const rect = card.getBoundingClientRect();
-    pointerDrag.offsetX = event.clientX - rect.left;
-    pointerDrag.offsetY = event.clientY - rect.top;
+    const ghostWidth = sx(state.config.layout.cards.zoneWidth);
+    const ghostHeight = sy(state.config.layout.cards.zoneHeight);
+    pointerDrag.offsetX = ghostWidth / 2;
+    pointerDrag.offsetY = ghostHeight / 2;
 
     card.setPointerCapture(event.pointerId);
     card.classList.add('is-dragging');
@@ -1029,6 +1049,8 @@ const init = (config) => {
   applyConfig(config);
   buildDropzones(config);
   buildCards(config);
+
+  document.addEventListener('pointerdown', requestFullscreenOnce, { once: true });
 
   tray.addEventListener('dragover', handleDragOver);
   tray.addEventListener('dragenter', handleDragEnter);
