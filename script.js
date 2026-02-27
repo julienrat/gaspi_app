@@ -1,6 +1,8 @@
 const tray = document.querySelector('.tray');
 const dropzonesContainer = document.querySelector('.dropzones');
 const backdropLayer = document.querySelector('.backdrop-layer');
+const calqueLayer = document.querySelector('.calque-layer');
+const feedbackLayer = document.querySelector('.feedback-layer');
 const overlay = document.querySelector('.overlay');
 const scoreEl = document.querySelector('[data-score]');
 const timerEl = document.querySelector('[data-timer]');
@@ -195,8 +197,13 @@ const clearLayer = (layer) => {
   layer.innerHTML = '';
 };
 
-const clearOverlay = () => clearLayer(overlay);
+const clearOverlay = () => {
+  clearLayer(overlay);
+  document.body.classList.remove('popup-visible');
+};
 const clearBackdrop = () => clearLayer(backdropLayer);
+const clearCalque = () => clearLayer(calqueLayer);
+const clearFeedback = () => clearLayer(feedbackLayer);
 
 const createLayerImage = (layer, src, position, className, size) => {
   if (!layer || !src) return null;
@@ -221,10 +228,23 @@ const createLayerImage = (layer, src, position, className, size) => {
 const createOverlayImage = (src, position, className, size) =>
   createLayerImage(overlay, src, position, className, size);
 
+const createFeedbackImage = (src, position, className, size) =>
+  createLayerImage(feedbackLayer, src, position, className, size);
+
+const showCalque = (config) => {
+  if (!calqueLayer) return;
+  const calque = config.calque;
+  if (calque?.src) {
+    createLayerImage(calqueLayer, calque.src, calque.position, 'calque-image', calque.size);
+  }
+};
+
 const showStartScreen = (config) => {
   if (!overlay) return;
   clearOverlay();
   clearBackdrop();
+  clearCalque();
+  clearFeedback();
   document.body.classList.add('is-start-screen');
   const btnSrc = config.startScreen?.startButtonSrc;
   const button = document.createElement('button');
@@ -255,11 +275,14 @@ const refreshOverlay = (config) => {
   if (!overlay) return;
   clearOverlay();
   clearBackdrop();
+  clearCalque();
+  clearFeedback();
   if (!state.hasStarted && config.startScreen?.enabled) {
     showStartScreen(config);
     return;
   }
   if (state.hasStarted) {
+    showCalque(config);
     showIntroOverlay(config);
   }
 };
@@ -481,6 +504,7 @@ const hidePopup = () => {
   layer.innerHTML = '';
   layer.style.pointerEvents = 'none';
   clearPopupHandlers();
+  document.body.classList.remove('popup-visible');
 };
 
 const showPopup = (popup, options = {}) => {
@@ -508,6 +532,7 @@ const showPopup = (popup, options = {}) => {
     img.style.transform = 'translate(-50%, -50%)';
   }
   layer.appendChild(img);
+  document.body.classList.add('popup-visible');
 
   const popupType = options.type;
   const dismissOnAny =
@@ -545,6 +570,62 @@ const showPopup = (popup, options = {}) => {
     popupState.timeoutId = window.setTimeout(() => {
       hidePopup();
     }, duration);
+  }
+};
+
+const successState = {
+  pending: false,
+  timeoutId: null,
+  handler: null,
+};
+
+const clearSuccessTimeout = () => {
+  if (successState.timeoutId) {
+    clearTimeout(successState.timeoutId);
+    successState.timeoutId = null;
+  }
+};
+
+const hideSuccessMessage = () => {
+  clearFeedback();
+};
+
+const showSuccessMessage = (config) => {
+  if (!feedbackLayer || !config?.src) return false;
+  hideSuccessMessage();
+  createFeedbackImage(config.src, config.position, 'feedback-image', config.size);
+  clearSuccessTimeout();
+  const duration = config.duration ?? 5000;
+  if (duration > 0) {
+    successState.timeoutId = window.setTimeout(() => {
+      hideSuccessMessage();
+      successState.timeoutId = null;
+    }, duration);
+  }
+  return true;
+};
+
+const queueNextCardAfterSuccess = () => {
+  if (successState.pending) return;
+  if (!state.queue.length) return;
+  const config = state.config.feedback?.successMessage;
+  if (!config?.src) {
+    showNextCard();
+    return;
+  }
+  successState.pending = true;
+  showSuccessMessage(config);
+  if (!successState.handler) {
+    successState.handler = () => {
+      if (!successState.pending) return;
+      successState.pending = false;
+      hideSuccessMessage();
+      clearSuccessTimeout();
+      document.removeEventListener('pointerdown', successState.handler, true);
+      successState.handler = null;
+      showNextCard();
+    };
+    document.addEventListener('pointerdown', successState.handler, true);
   }
 };
 
@@ -1300,12 +1381,23 @@ const removeScoring = (cardId) => {
 const dropCardToZone = (card, zone, clientX, clientY) => {
   if (!card || !zone) return;
   const wasActive = card.dataset.seq === 'active';
+  const zoneId = zone.dataset.zone;
+  const isCorrect = isCorrectDrop(card.id, zoneId);
+
+  if (!isCorrect) {
+    zone.classList.remove('is-over');
+    const popupData = getPopupForDrop(card.id, zoneId, false);
+    if (popupData) showPopup(popupData.popup, { type: popupData.type });
+    dropCardToTray(card);
+    return;
+  }
+
   zone.classList.remove('is-over');
   zone.appendChild(card);
   zone.classList.add('has-items');
   applyZoneImage(card);
-  const isCorrect = applyScoring(card.id, zone.dataset.zone);
-  const popupData = getPopupForDrop(card.id, zone.dataset.zone, isCorrect);
+  applyScoring(card.id, zoneId);
+  const popupData = getPopupForDrop(card.id, zoneId, true);
   if (popupData) showPopup(popupData.popup, { type: popupData.type });
   updateAllZones(card);
   if (isPhysicsMode()) {
@@ -1314,7 +1406,7 @@ const dropCardToZone = (card, zone, clientX, clientY) => {
   }
   if (wasActive) {
     delete card.dataset.seq;
-    showNextCard();
+    queueNextCardAfterSuccess();
   }
 
   card.classList.add('just-dropped');
@@ -1577,6 +1669,9 @@ const startGame = (config) => {
   document.body.classList.remove('is-start-screen');
   clearOverlay();
   clearBackdrop();
+  clearCalque();
+  clearFeedback();
+  showCalque(config);
   showIntroOverlay(config);
   buildDropzones(config);
   buildCards(config);

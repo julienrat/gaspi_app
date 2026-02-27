@@ -77,10 +77,30 @@ body {
   pointer-events: none;
 }
 
+.calque-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.feedback-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.feedback-image {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+}
+
 .overlay {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 6;
   pointer-events: none;
 }
 
@@ -88,6 +108,11 @@ body {
   position: absolute;
   pointer-events: none;
   user-select: none;
+}
+
+body.popup-visible .instruction-image {
+  opacity: 0;
+  visibility: hidden;
 }
 
 .popup-layer {
@@ -139,7 +164,7 @@ body.is-start-screen .dropzones {
   left: 24px;
   display: flex;
   gap: 12px;
-  z-index: 3;
+  z-index: 5;
   pointer-events: none;
 }
 
