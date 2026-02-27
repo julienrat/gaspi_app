@@ -185,11 +185,20 @@ const requestFullscreenOnce = async () => {
   }
 };
 
+const getViewportSize = () => {
+  const viewport = window.visualViewport;
+  if (viewport) {
+    return { width: viewport.width, height: viewport.height };
+  }
+  return { width: window.innerWidth, height: window.innerHeight };
+};
+
 const computeScale = (config) => {
   const baseWidth = config.layout.screen?.width || window.innerWidth;
   const baseHeight = config.layout.screen?.height || window.innerHeight;
-  const scaleX = window.innerWidth / baseWidth;
-  const scaleY = window.innerHeight / baseHeight;
+  const { width, height } = getViewportSize();
+  const scaleX = width / baseWidth;
+  const scaleY = height / baseHeight;
   return { scaleX, scaleY };
 };
 
@@ -1286,6 +1295,8 @@ const init = (config) => {
   buildCards(config);
 
   document.addEventListener('pointerdown', requestFullscreenOnce, { once: true });
+  document.addEventListener('touchend', requestFullscreenOnce, { once: true });
+  document.addEventListener('click', requestFullscreenOnce, { once: true });
 
   tray.addEventListener('dragover', handleDragOver);
   tray.addEventListener('dragenter', handleDragEnter);
@@ -1333,3 +1344,5 @@ const loadConfig = async () => {
 
 loadConfig();
 window.addEventListener('resize', handleResize);
+window.visualViewport?.addEventListener('resize', handleResize);
+window.visualViewport?.addEventListener('scroll', handleResize);
