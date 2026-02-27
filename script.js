@@ -112,6 +112,7 @@ const state = {
   timeLeft: 0,
   timerId: null,
   placements: new Map(),
+  attempts: new Map(),
   isTimeUp: false,
   scaleX: 1,
   scaleY: 1,
@@ -247,6 +248,7 @@ const showStartScreen = (config) => {
   clearFeedback();
   document.body.classList.add('is-start-screen');
   const btnSrc = config.startScreen?.startButtonSrc;
+  const btnSize = config.startScreen?.startButtonSize;
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'start-button';
@@ -254,6 +256,14 @@ const showStartScreen = (config) => {
   const img = document.createElement('img');
   img.src = btnSrc || 'images/bout.commencer.png';
   img.alt = 'Commencer';
+  if (btnSize?.width != null) {
+    img.style.width = `${sx(btnSize.width)}px`;
+    img.style.maxWidth = 'none';
+  }
+  if (btnSize?.height != null) {
+    img.style.height = `${sy(btnSize.height)}px`;
+    img.style.maxHeight = 'none';
+  }
   button.appendChild(img);
   button.addEventListener('click', () => startGame(config));
   overlay.appendChild(button);
@@ -607,7 +617,13 @@ const showSuccessMessage = (config) => {
 
 const queueNextCardAfterSuccess = () => {
   if (successState.pending) return;
-  if (!state.queue.length) return;
+  if (!state.queue.length) {
+    const completion = state.config.feedback?.completionPopup;
+    if (completion?.src) {
+      showPopup(completion, { type: 'correct', dismissOnAny: true, dismissOnSelf: true });
+    }
+    return;
+  }
   const config = state.config.feedback?.successMessage;
   if (!config?.src) {
     showNextCard();
@@ -1354,27 +1370,64 @@ const getPopupForDrop = (cardId, zoneId, isCorrect) => {
     }
     return targets.correctPopup ? { popup: targets.correctPopup, type: 'correct' } : null;
   }
+  const wrongPopups = Array.isArray(targets.wrongPopups) ? targets.wrongPopups : [];
+  for (const rule of wrongPopups) {
+    if (!rule) continue;
+    const zones = rule.zones ?? rule.zone;
+    const images = rule.images ?? rule.image;
+    const zoneList = Array.isArray(zones) ? zones : zones != null ? [zones] : [];
+    const imageList = Array.isArray(images) ? images : images != null ? [images] : [];
+    const zoneOk = zoneList.length ? zoneList.some((z) => String(z) === String(zoneId)) : true;
+    const imageOk = imageList.length
+      ? imageList.some((id) => String(id) === String(cardId))
+      : true;
+    if (zoneOk && imageOk && rule.popup) {
+      return { popup: rule.popup, type: 'wrong' };
+    }
+  }
   return targets.wrongPopup ? { popup: targets.wrongPopup, type: 'wrong' } : null;
 };
 
-const applyScoring = (cardId, zoneId) => {
-  const isCorrect = isCorrectDrop(cardId, zoneId);
-  const delta = isCorrect ? state.config.scoring.correct : state.config.scoring.wrong;
+const getAttemptState = (cardId, create = false) => {
+  if (!cardId) return null;
+  let entry = state.attempts.get(cardId);
+  if (!entry && create) {
+    entry = { hadWrong: false, locked: false };
+    state.attempts.set(cardId, entry);
+  }
+  return entry;
+};
 
+const markWrongAttempt = (cardId) => {
+  const entry = getAttemptState(cardId, true);
+  entry.hadWrong = true;
+  entry.locked = true;
+};
+
+const applyScoring = (cardId, zoneId) => {
+  const attempt = getAttemptState(cardId, true);
   const prev = state.placements.get(cardId);
-  if (prev) {
+  if (prev && !attempt.locked) {
     updateScore(-prev.delta);
   }
 
+  let delta = 0;
+  if (!attempt.locked) {
+    delta = attempt.hadWrong ? 0 : state.config.scoring.correct;
+    attempt.locked = true;
+  }
   updateScore(delta);
   state.placements.set(cardId, { zoneId, delta });
-  return isCorrect;
+  return delta;
 };
 
 const removeScoring = (cardId) => {
   const prev = state.placements.get(cardId);
   if (!prev) return;
-  updateScore(-prev.delta);
+  const attempt = getAttemptState(cardId);
+  if (!attempt?.locked) {
+    updateScore(-prev.delta);
+  }
   state.placements.delete(cardId);
 };
 
@@ -1386,6 +1439,7 @@ const dropCardToZone = (card, zone, clientX, clientY) => {
 
   if (!isCorrect) {
     zone.classList.remove('is-over');
+    markWrongAttempt(card.id);
     const popupData = getPopupForDrop(card.id, zoneId, false);
     if (popupData) showPopup(popupData.popup, { type: popupData.type });
     dropCardToTray(card);
@@ -1526,6 +1580,7 @@ const buildDropzones = (config) => {
   const hasPosition = config.layout.dropzones.zones.some((zone) => zone.position);
   dropzonesContainer.classList.toggle('is-positioned', hasPosition);
   const gravityEnabled = config.layout.dropzones.gravity?.enabled !== false;
+  const showLabels = config.debug?.showZoneLabels ?? true;
 
   for (const zoneConfig of config.layout.dropzones.zones) {
     const zone = document.createElement('div');
@@ -1534,10 +1589,12 @@ const buildDropzones = (config) => {
     if (gravityEnabled) zone.classList.add('gravity');
     applyZoneLayout(zone, zoneConfig);
 
-    const label = document.createElement('span');
-    label.className = 'zone-label';
-    label.textContent = zoneConfig.label || `Zone ${zoneConfig.id}`;
-    zone.appendChild(label);
+    if (showLabels) {
+      const label = document.createElement('span');
+      label.className = 'zone-label';
+      label.textContent = zoneConfig.label || `Zone ${zoneConfig.id}`;
+      zone.appendChild(label);
+    }
 
     dropzonesContainer.appendChild(zone);
     wireDropzone(zone);
@@ -1677,6 +1734,8 @@ const startGame = (config) => {
   buildCards(config);
 
   state.score = 0;
+  state.placements.clear();
+  state.attempts.clear();
   updateScore(0);
   resetTimer(config.timer.seconds);
   updateAllZones();

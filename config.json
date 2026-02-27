@@ -36,11 +36,15 @@
     "dropzoneItems": 0
   },
   "debug": {
-    "showZoneLabels": true
+    "showZoneLabels": false
   },
   "startScreen": {
     "enabled": true,
-    "startButtonSrc": "images/bout.commencer.png",
+    "startButtonSrc": "images/5.module.part1.0.png",
+    "startButtonSize": {
+      "width": 1920,
+      "height": 1200
+    },
     "dropImage": {
       "src": "images/zone_Aliments.png",
       "position": {
@@ -75,6 +79,17 @@
       "size": {
         "width": 416,
         "height": 294
+      }
+    },
+    "completionPopup": {
+      "src": "images/textes-popup/pop.Fin.png",
+      "position": {
+        "top": 48,
+        "left": 669
+      },
+      "size": {
+        "width": 1251,
+        "height": 319
       }
     }
   },
@@ -218,9 +233,9 @@
           "id": "11",
           "label": "Zone 11",
           "width": 206,
-          "height": 115,
+          "height": 85,
           "position": {
-            "top": 521,
+            "top": 551,
             "left": 161
           }
         },
@@ -228,9 +243,9 @@
           "id": "12",
           "label": "Zone 12",
           "width": 191,
-          "height": 162,
+          "height": 132,
           "position": {
-            "top": 523,
+            "top": 551,
             "left": 412
           }
         },
@@ -401,6 +416,29 @@
     }
   },
   "targets": {
+    "wrongPopups": [
+      {
+        "zones": [
+          "1",
+          "2",
+          "3"
+        ],
+        "images": [
+          "img-13"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.loupe.fruitsFrigo.png"
+        }
+      },
+      {
+        "zones": [
+          "13"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.loupe.AlimentsPoubelle.png"
+        }
+      }
+    ],
     "wrongPopup": {
       "src": "images/textes-popup/pop.loupe.png",
       "duration": 5000
