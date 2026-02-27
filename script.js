@@ -1,5 +1,7 @@
 const tray = document.querySelector('.tray');
 const dropzonesContainer = document.querySelector('.dropzones');
+const backdropLayer = document.querySelector('.backdrop-layer');
+const overlay = document.querySelector('.overlay');
 const scoreEl = document.querySelector('[data-score]');
 const timerEl = document.querySelector('[data-timer]');
 const hud = document.querySelector('.hud');
@@ -89,6 +91,7 @@ const defaultConfig = {
   scoring: {
     correct: 10,
     wrong: -2,
+    total: 20,
     position: { top: 24, left: 24 },
   },
   targets: {
@@ -113,6 +116,7 @@ const state = {
   queue: [],
   dragImageCache: new Map(),
   dragImageHost: null,
+  hasStarted: false,
 };
 
 const physics = {
@@ -145,15 +149,32 @@ const resetHudCard = (card) => {
   card.style.right = '';
   card.style.bottom = '';
   card.style.left = '';
+  card.style.transform = '';
 };
 
 const applyHudCardPosition = (card, position) => {
   if (!card || !position) return;
   card.style.position = 'absolute';
-  if (position.top != null) card.style.top = `${sy(position.top)}px`;
+  card.style.transform = '';
+
+  const centerX = position.x ?? position.centerX;
+  const centerY = position.y ?? position.centerY;
+  const hasCenterX = centerX != null;
+  const hasCenterY = centerY != null;
+
+  if (hasCenterX) card.style.left = `${sx(centerX)}px`;
+  if (hasCenterY) card.style.top = `${sy(centerY)}px`;
+
+  if (!hasCenterY && position.top != null) card.style.top = `${sy(position.top)}px`;
   if (position.right != null) card.style.right = `${sx(position.right)}px`;
   if (position.bottom != null) card.style.bottom = `${sy(position.bottom)}px`;
-  if (position.left != null) card.style.left = `${sx(position.left)}px`;
+  if (!hasCenterX && position.left != null) card.style.left = `${sx(position.left)}px`;
+
+  if (hasCenterX || hasCenterY) {
+    const tx = hasCenterX ? '-50%' : '0';
+    const ty = hasCenterY ? '-50%' : '0';
+    card.style.transform = `translate(${tx}, ${ty})`;
+  }
 };
 
 const applyHudPositions = (config) => {
@@ -167,6 +188,80 @@ const applyHudPositions = (config) => {
   resetHudCard(timerCard);
   if (scorePos) applyHudCardPosition(scoreCard, scorePos);
   if (timerPos) applyHudCardPosition(timerCard, timerPos);
+};
+
+const clearLayer = (layer) => {
+  if (!layer) return;
+  layer.innerHTML = '';
+};
+
+const clearOverlay = () => clearLayer(overlay);
+const clearBackdrop = () => clearLayer(backdropLayer);
+
+const createLayerImage = (layer, src, position, className, size) => {
+  if (!layer || !src) return null;
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '';
+  img.className = `overlay-image ${className || ''}`.trim();
+  if (position) {
+    if (position.top != null) img.style.top = `${sy(position.top)}px`;
+    if (position.left != null) img.style.left = `${sx(position.left)}px`;
+    if (position.right != null) img.style.right = `${sx(position.right)}px`;
+    if (position.bottom != null) img.style.bottom = `${sy(position.bottom)}px`;
+  }
+  if (size) {
+    if (size.width != null) img.style.width = `${sx(size.width)}px`;
+    if (size.height != null) img.style.height = `${sy(size.height)}px`;
+  }
+  layer.appendChild(img);
+  return img;
+};
+
+const createOverlayImage = (src, position, className, size) =>
+  createLayerImage(overlay, src, position, className, size);
+
+const showStartScreen = (config) => {
+  if (!overlay) return;
+  clearOverlay();
+  clearBackdrop();
+  document.body.classList.add('is-start-screen');
+  const btnSrc = config.startScreen?.startButtonSrc;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'start-button';
+  button.setAttribute('aria-label', 'Commencer');
+  const img = document.createElement('img');
+  img.src = btnSrc || 'images/bout.commencer.png';
+  img.alt = 'Commencer';
+  button.appendChild(img);
+  button.addEventListener('click', () => startGame(config));
+  overlay.appendChild(button);
+};
+
+const showIntroOverlay = (config) => {
+  if (!overlay || !backdropLayer) return;
+  const drop = config.startScreen?.dropImage;
+  const instruction = config.startScreen?.instructionImage;
+  if (drop?.src) {
+    createLayerImage(backdropLayer, drop.src, drop.position, 'drop-image', drop.size);
+  }
+  if (instruction?.src) {
+    createOverlayImage(instruction.src, instruction.position, 'instruction-image', instruction.size);
+  }
+};
+
+const refreshOverlay = (config) => {
+  if (!overlay) return;
+  clearOverlay();
+  clearBackdrop();
+  if (!state.hasStarted && config.startScreen?.enabled) {
+    showStartScreen(config);
+    return;
+  }
+  if (state.hasStarted) {
+    showIntroOverlay(config);
+  }
 };
 
 const requestFullscreenOnce = async () => {
@@ -275,7 +370,9 @@ const applyConfig = (config) => {
   setCssVar('--tray-right', trayRight);
   setCssVar('--tray-left', trayLeft);
   setCssVar('--tray-columns', config.layout.tray.columns);
-  tray.classList.toggle('show-bg', config.layout.tray?.showBackground !== false);
+  const showTrayBg = config.layout.tray?.showBackground !== false;
+  tray.classList.toggle('show-bg', showTrayBg);
+  tray.classList.toggle('hide-cards', !showTrayBg);
 
   setCssVar('--card-width', `${sx(config.layout.cards.width)}px`);
   setCssVar('--card-height', `${sy(config.layout.cards.height)}px`);
@@ -307,11 +404,148 @@ const formatTime = (seconds) => {
 
 const updateScore = (delta) => {
   state.score += delta;
-  scoreEl.textContent = state.score;
+  const total = state.config.scoring?.total;
+  if (total != null) {
+    scoreEl.textContent = `${state.score}/${total}`;
+  } else {
+    scoreEl.textContent = state.score;
+  }
 };
 
 const updateTimerUI = () => {
   timerEl.textContent = formatTime(state.timeLeft);
+};
+
+const popupState = {
+  timeoutId: null,
+  dismissHandler: null,
+};
+
+const getPopupLayer = () => {
+  if (!overlay) return null;
+  let layer = overlay.querySelector('.popup-layer');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.className = 'popup-layer';
+    overlay.appendChild(layer);
+  }
+  return layer;
+};
+
+const normalizePopup = (popup, defaults = {}) => {
+  if (!popup) return null;
+  if (typeof popup === 'string') {
+    return { ...defaults, src: popup };
+  }
+  if (typeof popup === 'object') {
+    return { ...defaults, ...popup };
+  }
+  return null;
+};
+
+const applyPopupPosition = (img, position) => {
+  if (!img || !position) return;
+  const centerX = position.x ?? position.centerX;
+  const centerY = position.y ?? position.centerY;
+  const hasCenterX = centerX != null;
+  const hasCenterY = centerY != null;
+
+  if (hasCenterX) img.style.left = `${sx(centerX)}px`;
+  if (hasCenterY) img.style.top = `${sy(centerY)}px`;
+  if (!hasCenterY && position.top != null) img.style.top = `${sy(position.top)}px`;
+  if (position.right != null) img.style.right = `${sx(position.right)}px`;
+  if (position.bottom != null) img.style.bottom = `${sy(position.bottom)}px`;
+  if (!hasCenterX && position.left != null) img.style.left = `${sx(position.left)}px`;
+
+  if (hasCenterX || hasCenterY) {
+    const tx = hasCenterX ? '-50%' : '0';
+    const ty = hasCenterY ? '-50%' : '0';
+    img.style.transform = `translate(${tx}, ${ty})`;
+  }
+};
+
+const clearPopupHandlers = () => {
+  if (popupState.timeoutId) {
+    clearTimeout(popupState.timeoutId);
+    popupState.timeoutId = null;
+  }
+  if (popupState.dismissHandler) {
+    document.removeEventListener('pointerdown', popupState.dismissHandler, true);
+    popupState.dismissHandler = null;
+  }
+};
+
+const hidePopup = () => {
+  const layer = getPopupLayer();
+  if (!layer) return;
+  layer.innerHTML = '';
+  layer.style.pointerEvents = 'none';
+  clearPopupHandlers();
+};
+
+const showPopup = (popup, options = {}) => {
+  const layer = getPopupLayer();
+  if (!layer) return;
+  const defaults = state.config.targets?.popupDefaults || {};
+  const normalized = normalizePopup(popup, defaults);
+  if (!normalized?.src) return;
+
+  layer.innerHTML = '';
+  clearPopupHandlers();
+  const img = document.createElement('img');
+  img.src = normalized.src;
+  img.alt = '';
+  img.className = 'popup-image';
+  if (normalized.size) {
+    if (normalized.size.width != null) img.style.width = `${sx(normalized.size.width)}px`;
+    if (normalized.size.height != null) img.style.height = `${sy(normalized.size.height)}px`;
+  }
+  if (normalized.position) {
+    applyPopupPosition(img, normalized.position);
+  } else {
+    img.style.left = '50%';
+    img.style.top = '50%';
+    img.style.transform = 'translate(-50%, -50%)';
+  }
+  layer.appendChild(img);
+
+  const popupType = options.type;
+  const dismissOnAny =
+    options.dismissOnAny ??
+    normalized.dismissOnAny ??
+    (popupType === 'wrong' ? true : false);
+  const dismissOnSelf =
+    options.dismissOnSelf ??
+    normalized.dismissOnSelf ??
+    (popupType === 'correct' ? true : false);
+
+  if (dismissOnSelf) {
+    img.addEventListener('pointerdown', (event) => {
+      event.stopPropagation();
+      hidePopup();
+    });
+  }
+
+  if (dismissOnAny) {
+    popupState.dismissHandler = () => {
+      hidePopup();
+    };
+    document.addEventListener('pointerdown', popupState.dismissHandler, true);
+  }
+
+  layer.style.pointerEvents = dismissOnAny || dismissOnSelf ? 'auto' : 'none';
+
+  let duration = normalized.duration ?? (popupType === 'correct' ? 0 : 1600);
+  if (popupType === 'wrong') {
+    const maxDuration = 5000;
+    const baseDuration = normalized.duration ?? maxDuration;
+    duration = Math.min(baseDuration, maxDuration);
+  }
+  if (duration > 0) {
+    popupState.timeoutId = window.setTimeout(() => {
+      hidePopup();
+    }, duration);
+  }
 };
 
 const stopTimer = () => {
@@ -994,9 +1228,56 @@ const handleDragLeave = (event) => {
   event.currentTarget.classList.remove('is-over');
 };
 
+const getTargetItems = () => {
+  const targets = state.config.targets || {};
+  if (targets.items && typeof targets.items === 'object') {
+    return targets.items;
+  }
+  return targets;
+};
+
+const normalizeTargetEntry = (entry) => {
+  if (Array.isArray(entry)) {
+    return { zones: entry };
+  }
+  if (entry && typeof entry === 'object') {
+    const zones = entry.zones ?? entry.zone ?? [];
+    return {
+      zones: Array.isArray(zones) ? zones : zones != null ? [zones] : [],
+      popup: entry.popup ?? entry.popupOnCorrect ?? entry.popupGood ?? null,
+    };
+  }
+  if (entry != null) {
+    return { zones: [entry] };
+  }
+  return { zones: [] };
+};
+
+const resolveTargetEntry = (cardId) => {
+  const items = getTargetItems();
+  return normalizeTargetEntry(items ? items[cardId] : null);
+};
+
+const isCorrectDrop = (cardId, zoneId) => {
+  const { zones } = resolveTargetEntry(cardId);
+  return zones.some((value) => String(value) === String(zoneId));
+};
+
+const getPopupForDrop = (cardId, zoneId, isCorrect) => {
+  const targets = state.config.targets || {};
+  if (isCorrect) {
+    const { popup } = resolveTargetEntry(cardId);
+    if (popup) return { popup, type: 'correct' };
+    if (targets.zonePopups && targets.zonePopups[zoneId]) {
+      return { popup: targets.zonePopups[zoneId], type: 'correct' };
+    }
+    return targets.correctPopup ? { popup: targets.correctPopup, type: 'correct' } : null;
+  }
+  return targets.wrongPopup ? { popup: targets.wrongPopup, type: 'wrong' } : null;
+};
+
 const applyScoring = (cardId, zoneId) => {
-  const target = state.config.targets[cardId];
-  const isCorrect = target && String(target) === String(zoneId);
+  const isCorrect = isCorrectDrop(cardId, zoneId);
   const delta = isCorrect ? state.config.scoring.correct : state.config.scoring.wrong;
 
   const prev = state.placements.get(cardId);
@@ -1006,6 +1287,7 @@ const applyScoring = (cardId, zoneId) => {
 
   updateScore(delta);
   state.placements.set(cardId, { zoneId, delta });
+  return isCorrect;
 };
 
 const removeScoring = (cardId) => {
@@ -1022,7 +1304,9 @@ const dropCardToZone = (card, zone, clientX, clientY) => {
   zone.appendChild(card);
   zone.classList.add('has-items');
   applyZoneImage(card);
-  applyScoring(card.id, zone.dataset.zone);
+  const isCorrect = applyScoring(card.id, zone.dataset.zone);
+  const popupData = getPopupForDrop(card.id, zone.dataset.zone, isCorrect);
+  if (popupData) showPopup(popupData.popup, { type: popupData.type });
   updateAllZones(card);
   if (isPhysicsMode()) {
     physics.cards.delete(card);
@@ -1287,12 +1571,27 @@ const buildCards = (config) => {
   showNextCard();
 };
 
+const startGame = (config) => {
+  if (state.hasStarted) return;
+  state.hasStarted = true;
+  document.body.classList.remove('is-start-screen');
+  clearOverlay();
+  clearBackdrop();
+  showIntroOverlay(config);
+  buildDropzones(config);
+  buildCards(config);
+
+  state.score = 0;
+  updateScore(0);
+  resetTimer(config.timer.seconds);
+  updateAllZones();
+};
+
 const init = (config) => {
   state.config = config;
   applyConfig(config);
   ensureDragImageHost();
-  buildDropzones(config);
-  buildCards(config);
+  clearOverlay();
 
   document.addEventListener('pointerdown', requestFullscreenOnce, { once: true });
   document.addEventListener('touchend', requestFullscreenOnce, { once: true });
@@ -1303,10 +1602,11 @@ const init = (config) => {
   tray.addEventListener('dragleave', handleDragLeave);
   tray.addEventListener('drop', handleDropToTray);
 
-  state.score = 0;
-  scoreEl.textContent = state.score;
-  resetTimer(config.timer.seconds);
-  updateAllZones();
+  if (config.startScreen?.enabled) {
+    showStartScreen(config);
+  } else {
+    startGame(config);
+  }
 };
 
 const handleResize = () => {
@@ -1314,6 +1614,7 @@ const handleResize = () => {
   const prevScaleX = state.scaleX;
   const prevScaleY = state.scaleY;
   applyConfig(state.config);
+  refreshOverlay(state.config);
   const ratioX = prevScaleX ? state.scaleX / prevScaleX : 1;
   const ratioY = prevScaleY ? state.scaleY / prevScaleY : 1;
   if (ratioX !== 1 || ratioY !== 1) {

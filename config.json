@@ -9,7 +9,7 @@
   "hud": {
     "fontFamily": "\"Oxanium\", \"Segoe UI\", system-ui, sans-serif",
     "color": "#000000",
-    "fontSize": "3rem",
+    "fontSize": "1.5rem",
     "showScoreBackground": false,
     "showTimerBackground": false,
     "showScoreBorder": false,
@@ -27,22 +27,48 @@
   "debug": {
     "showZoneLabels": true
   },
+  "startScreen": {
+    "enabled": true,
+    "startButtonSrc": "images/bout.commencer.png",
+    "dropImage": {
+      "src": "images/zone_Aliments.png",
+      "position": {
+        "top": 24,
+        "left": 24
+      },
+      "size": {
+        "width": 641,
+        "height": 556
+      }
+    },
+    "instructionImage": {
+      "src": "images/textes-popup/txt.00.intro.png",
+      "position": {
+        "top": 48,
+        "left": 669
+      },
+      "size": {
+        "width": 1184,
+        "height": 164
+      }
+    }
+  },
   "layout": {
     "screen": {
       "width": 1920,
       "height": 1200
     },
     "tray": {
-      "top": 30,
-      "left": 30,
-      "columns": 1,
+      "top": 181,
+      "left": 150,
+      "columns": 0,
       "showBackground": false
     },
     "cards": {
-      "width": 439,
-      "height": 324,
-      "zoneWidth": 300,
-      "zoneHeight": 300
+      "width": 416,
+      "height": 294,
+      "zoneWidth": 0,
+      "zoneHeight": 0
     },
     "dropzones": {
       "count": 14,
@@ -341,19 +367,120 @@
     }
   },
   "scoring": {
-    "correct": 10,
-    "wrong": -2,
+    "correct": 1,
+    "wrong": 0,
+    "total": 20,
     "position": {
-      "top": 24,
-      "left": 24
+      "x": 136,
+      "y": 136
     }
   },
   "targets": {
-    "img-1": "2",
-    "img-2": "1",
-    "img-3": "3",
-    "img-4": "2",
-    "img-5": "1",
-    "img-6": "3"
+    "wrongPopup": {
+      "src": "images/textes-popup/pop.loupe.png",
+      "duration": 5000,
+      "position": {
+        "x": 960,
+        "y": 600
+      }
+    },
+    "correctPopup": null,
+    "popupDefaults": {
+      "position": {
+        "x": 960,
+        "y": 600
+      }
+    },
+    "items": {
+      "img-1": {
+        "zones": [
+          "2",
+          "3"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.ViandePoissons.png",
+          "position": {
+            "x": 960,
+            "y": 600
+          }
+        }
+      },
+      "img-2": {
+        "zones": [
+          "1"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.Yaourts.png"
+        }
+      },
+      "img-3": [
+        "3"
+      ],
+      "img-4": [
+        "2"
+      ],
+      "img-5": [
+        "1"
+      ],
+      "img-6": [
+        "3"
+      ],
+      "img-7": {
+        "zones": [
+          "2"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.glace.png"
+        }
+      },
+      "img-8": {
+        "zones": [
+          "1"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.Poubelle.png"
+        }
+      },
+      "img-12": {
+        "zones": [
+          "1"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.Oeufs.png"
+        }
+      },
+      "img-15": {
+        "zones": [
+          "1"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.PommesdeTerre.png"
+        }
+      },
+      "img-16": {
+        "zones": [
+          "1"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.Compost.png"
+        }
+      },
+      "img-19": {
+        "zones": [
+          "1"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.Restes.png"
+        }
+      },
+      "img-20": {
+        "zones": [
+          "1"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.PatesRiz.png"
+        }
+       }
+    }
   }
 }
