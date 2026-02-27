@@ -56,6 +56,7 @@ const defaultConfig = {
         maxSpeed: 2600,
         bounce: 0,
         settleEpsilon: 12,
+        stacking: true,
         gap: 6,
         padding: 10,
       },
@@ -70,6 +71,7 @@ const defaultConfig = {
   },
   images: {
     count: 6,
+    showBackgroundColor: true,
     items: [
       { id: 'img-1', label: '1', src: 'images/img-1.png', color: 'coral' },
       { id: 'img-2', label: '2', src: 'images/img-2.png', color: 'gold' },
@@ -109,6 +111,8 @@ const state = {
   scaleX: 1,
   scaleY: 1,
   queue: [],
+  dragImageCache: new Map(),
+  dragImageHost: null,
 };
 
 const physics = {
@@ -339,16 +343,130 @@ const setCardVisuals = (card, data) => {
     card.style.backgroundImage = 'none';
   }
 
-  if (data.color) {
+  const allowColor =
+    state.config.images?.showBackgroundColor !== false || !data.src;
+
+  if (data.color && allowColor) {
     card.style.backgroundColor = data.color;
+  } else if (!allowColor) {
+    card.style.backgroundColor = 'transparent';
   }
+};
+
+const setCardSize = (card, width, height) => {
+  card.style.width = `${width}px`;
+  card.style.height = `${height}px`;
+};
+
+const getScaledNativeSize = (record) => {
+  if (!record?.loaded) return null;
+  return {
+    width: record.width * state.scaleX,
+    height: record.height * state.scaleY,
+  };
+};
+
+const setCardImage = (card, src) => {
+  if (!src) {
+    card.style.backgroundImage = 'none';
+    return;
+  }
+  card.style.backgroundImage = `url(${src})`;
+};
+
+const getBaseImageSrc = (card) => card.dataset.srcOriginal || card.dataset.src || '';
+
+const applyZoneImage = (card) => {
+  const base = getBaseImageSrc(card);
+  const zoneSrc = getDragImageSrc(base);
+  if (zoneSrc) {
+    setCardImage(card, zoneSrc);
+    const record = state.dragImageCache.get(zoneSrc);
+    const nativeSize = getScaledNativeSize(record);
+    if (nativeSize) {
+      setCardSize(card, nativeSize.width, nativeSize.height);
+      card.dataset.nativeWidth = String(record.width);
+      card.dataset.nativeHeight = String(record.height);
+    }
+  }
+};
+
+const applyTrayImage = (card) => {
+  const base = getBaseImageSrc(card);
+  if (base) setCardImage(card, base);
+  setCardSize(
+    card,
+    sx(state.config.layout.cards.width),
+    sy(state.config.layout.cards.height)
+  );
+};
+
+const getDragImageSrc = (src) => {
+  if (!src) return '';
+  if (src.endsWith('.G.png')) {
+    return src.replace(/\.G\.png$/, '.P.png');
+  }
+  return src;
+};
+
+const ensureDragImageHost = () => {
+  if (state.dragImageHost) return;
+  const host = document.createElement('div');
+  host.style.position = 'fixed';
+  host.style.top = '-10000px';
+  host.style.left = '-10000px';
+  host.style.width = '1px';
+  host.style.height = '1px';
+  host.style.overflow = 'visible';
+  host.style.opacity = '0.01';
+  host.style.pointerEvents = 'none';
+  host.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(host);
+  state.dragImageHost = host;
+};
+
+const preloadDragImage = (src) => {
+  if (!src || state.dragImageCache.has(src)) return;
+  const img = new Image();
+  img.decoding = 'async';
+  const record = {
+    img,
+    loaded: false,
+    width: 0,
+    height: 0,
+    el: null,
+    canvas: null,
+  };
+  img.onload = () => {
+    record.loaded = true;
+    record.width = img.naturalWidth || img.width;
+    record.height = img.naturalHeight || img.height;
+    if (record.el) {
+      record.el.width = record.width;
+      record.el.height = record.height;
+    }
+    if (record.canvas) {
+      record.canvas.width = record.width;
+      record.canvas.height = record.height;
+      const ctx = record.canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, record.canvas.width, record.canvas.height);
+        ctx.drawImage(img, 0, 0, record.canvas.width, record.canvas.height);
+      }
+    }
+  };
+  img.src = src;
+  state.dragImageCache.set(src, record);
+};
+
+const pickDragSource = (src) => {
+  if (!src) return '';
+  return getDragImageSrc(src);
 };
 
 const buildDragGhost = (card) => {
   const ghost = document.createElement('div');
   ghost.classList.add('drag-ghost');
-  ghost.style.width = `${sx(state.config.layout.cards.zoneWidth)}px`;
-  ghost.style.height = `${sy(state.config.layout.cards.zoneHeight)}px`;
   ghost.style.margin = '0';
   ghost.style.transform = 'none';
   ghost.style.position = 'absolute';
@@ -359,15 +477,30 @@ const buildDragGhost = (card) => {
   ghost.style.opacity = '1';
 
   const src = card.dataset.src;
+  const dragSrc = pickDragSource(src);
+  const record = dragSrc ? state.dragImageCache.get(dragSrc) : null;
+  const nativeSize = getScaledNativeSize(record);
+  const fallbackWidth = sx(state.config.layout.cards.zoneWidth);
+  const fallbackHeight = sy(state.config.layout.cards.zoneHeight);
+  const width = nativeSize ? nativeSize.width : fallbackWidth;
+  const height = nativeSize ? nativeSize.height : fallbackHeight;
+  ghost.style.width = `${width}px`;
+  ghost.style.height = `${height}px`;
+  const allowColor =
+    state.config.images?.showBackgroundColor !== false || !src;
   const computedBg = getComputedStyle(card).backgroundColor;
   const color = card.dataset.color || card.style.backgroundColor || computedBg;
-  if (color && color !== 'rgba(0, 0, 0, 0)') {
+  if (allowColor && color && color !== 'rgba(0, 0, 0, 0)') {
     ghost.style.backgroundColor = color;
   }
 
-  if (src) {
+  if (dragSrc) {
     const img = document.createElement('img');
-    img.src = src;
+    img.src = dragSrc;
+    if (nativeSize) {
+      img.width = nativeSize.width;
+      img.height = nativeSize.height;
+    }
     img.alt = '';
     img.draggable = false;
     ghost.appendChild(img);
@@ -431,6 +564,7 @@ const layoutZoneStack = (zone, animateCard = null) => {
   const gravity = getGravityConfig();
   const gap = gravity.gap ?? 6;
   const padding = gravity.padding ?? 10;
+  const stacking = gravity.stacking !== false;
   const align = gravity.align || 'left';
   const durationMs = gravity.durationMs ?? 800;
   const easing = gravity.easing || 'cubic-bezier(0.22, 1, 0.36, 1)';
@@ -497,6 +631,16 @@ const resetCardLayout = (card) => {
   card.style.transform = '';
 };
 
+const getCardSize = (card) => {
+  const rect = card.getBoundingClientRect();
+  const fallbackWidth = sx(state.config.layout.cards.zoneWidth);
+  const fallbackHeight = sy(state.config.layout.cards.zoneHeight);
+  return {
+    width: rect.width || fallbackWidth,
+    height: rect.height || fallbackHeight,
+  };
+};
+
 const ensureZoneCardStates = (zone) => {
   const zoneId = zone.dataset.zone;
   const zoneRect = zone.getBoundingClientRect();
@@ -505,7 +649,16 @@ const ensureZoneCardStates = (zone) => {
     const cardRect = card.getBoundingClientRect();
     const x = cardRect.left - zoneRect.left;
     const y = cardRect.top - zoneRect.top;
-    physics.cards.set(card, { x, y, vy: 0, zoneId, settled: true });
+    const size = getCardSize(card);
+    physics.cards.set(card, {
+      x,
+      y,
+      vy: 0,
+      zoneId,
+      settled: true,
+      width: size.width,
+      height: size.height,
+    });
   });
 };
 
@@ -545,9 +698,8 @@ const updatePhysics = (dt) => {
   const settleEpsilon = gravity.settleEpsilon ?? 12;
   const gap = gravity.gap ?? 6;
   const padding = gravity.padding ?? 10;
+  const stacking = gravity.stacking !== false;
 
-  const cardWidth = sx(state.config.layout.cards.zoneWidth);
-  const cardHeight = sy(state.config.layout.cards.zoneHeight);
   const gapY = sy(gap);
   const padX = sx(padding);
   const padY = sy(padding);
@@ -568,37 +720,57 @@ const updatePhysics = (dt) => {
   zones.forEach(({ zone, cards }) => {
     const zoneHeight = zone.clientHeight;
     const zoneWidth = zone.clientWidth;
-    const floorY = zoneHeight - padY - cardHeight;
 
-    cards.forEach(({ card, state: cardState }) => {
-      if (cardState.settled) return;
+    const ordered = [...cards].sort((a, b) => b.state.y - a.state.y);
+    ordered.forEach(({ card, state: cardState }) => {
+      const cardWidth = cardState.width || getCardSize(card).width;
+      const cardHeight = cardState.height || getCardSize(card).height;
+      cardState.width = cardWidth;
+      cardState.height = cardHeight;
 
-      cardState.vy = Math.min(cardState.vy + accel * dt, maxSpeed);
-      let nextY = cardState.y + cardState.vy * dt;
+      const floorY = zoneHeight - padY - cardHeight;
       cardState.x = clamp(cardState.x, padX, zoneWidth - padX - cardWidth);
 
       let landingY = floorY;
-      cards.forEach(({ state: otherState }) => {
-        if (otherState === cardState) return;
-        const overlaps =
-          cardState.x < otherState.x + cardWidth && cardState.x + cardWidth > otherState.x;
-        if (!overlaps) return;
-        if (otherState.y >= cardState.y - 0.5) {
-          const surface = otherState.y - gapY - cardHeight;
-          if (surface < landingY) landingY = surface;
-        }
-      });
+      let supportSettled = true;
+
+      if (stacking) {
+        cards.forEach(({ state: otherState }) => {
+          if (otherState === cardState) return;
+          const otherWidth = otherState.width || cardWidth;
+          const overlaps =
+            cardState.x < otherState.x + otherWidth && cardState.x + cardWidth > otherState.x;
+          if (!overlaps) return;
+          if (otherState.y >= cardState.y - 0.5) {
+            const surface = otherState.y - gapY - cardHeight;
+            if (surface < landingY) {
+              landingY = surface;
+              supportSettled = otherState.settled;
+            }
+          }
+        });
+      }
+
+      if (!cardState.settled) {
+        cardState.vy = Math.min(cardState.vy + accel * dt, maxSpeed);
+      }
+      let nextY = cardState.y + cardState.vy * dt;
 
       if (nextY >= landingY) {
         nextY = landingY;
         if (bounce > 0 && Math.abs(cardState.vy) > settleEpsilon) {
           cardState.vy = -cardState.vy * bounce;
+          cardState.settled = false;
           hasMoving = true;
         } else {
           cardState.vy = 0;
-          cardState.settled = true;
+          cardState.settled = supportSettled;
+          if (!supportSettled) {
+            hasMoving = true;
+          }
         }
       } else {
+        cardState.settled = false;
         hasMoving = true;
       }
 
@@ -619,8 +791,9 @@ const startPhysicsDrop = (card, zone, clientX, clientY) => {
 
   const gravity = getGravityConfig();
   const padding = gravity.padding ?? 10;
-  const cardWidth = sx(state.config.layout.cards.zoneWidth);
-  const cardHeight = sy(state.config.layout.cards.zoneHeight);
+  const size = getCardSize(card);
+  const cardWidth = size.width;
+  const cardHeight = size.height;
   const padX = sx(padding);
   const padY = sy(padding);
 
@@ -633,7 +806,15 @@ const startPhysicsDrop = (card, zone, clientX, clientY) => {
   const y = clamp(rawY, padY, zoneRect.height - padY - cardHeight);
 
   ensureZoneCardStates(zone);
-  physics.cards.set(card, { x, y, vy: 0, zoneId: zone.dataset.zone, settled: false });
+  physics.cards.set(card, {
+    x,
+    y,
+    vy: 0,
+    zoneId: zone.dataset.zone,
+    settled: false,
+    width: cardWidth,
+    height: cardHeight,
+  });
 
   card.style.position = 'absolute';
   card.style.left = `${x}px`;
@@ -671,13 +852,43 @@ const wireCard = (card) => {
     event.dataTransfer.setData('text/plain', card.id);
     event.dataTransfer.effectAllowed = 'move';
 
-    const ghost = buildDragGhost(card);
-    document.body.appendChild(ghost);
+    ensureDragImageHost();
+    const dragSrc = pickDragSource(card.dataset.src);
+    const record = dragSrc ? state.dragImageCache.get(dragSrc) : null;
+    let dragEl;
+    let offsetX;
+    let offsetY;
 
-    const offsetX = Math.round(sx(state.config.layout.cards.zoneWidth) / 2);
-    const offsetY = Math.round(sy(state.config.layout.cards.zoneHeight) / 2);
-    event.dataTransfer.setDragImage(ghost, offsetX, offsetY);
-    card._dragGhost = ghost;
+    if (record?.loaded) {
+      if (!record.canvas) {
+        const canvas = document.createElement('canvas');
+        canvas.width = record.width;
+        canvas.height = record.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(record.img, 0, 0, canvas.width, canvas.height);
+        }
+        state.dragImageHost.appendChild(canvas);
+        record.canvas = canvas;
+      }
+      dragEl = record.canvas;
+      const width = record.canvas?.width || record.width;
+      const height = record.canvas?.height || record.height;
+      offsetX = Math.round(width / 2);
+      offsetY = Math.round(height / 2);
+    } else {
+      const ghost = buildDragGhost(card);
+      document.body.appendChild(ghost);
+      const ghostRect = ghost.getBoundingClientRect();
+      dragEl = ghost;
+      offsetX = Math.round(ghostRect.width / 2);
+      offsetY = Math.round(ghostRect.height / 2);
+      card._dragGhostRemovable = true;
+    }
+
+    event.dataTransfer.setDragImage(dragEl, offsetX, offsetY);
+    card._dragGhost = dragEl;
 
     requestAnimationFrame(() => {
       card.classList.add('is-dragging');
@@ -686,10 +897,11 @@ const wireCard = (card) => {
 
   card.addEventListener('dragend', () => {
     card.classList.remove('is-dragging');
-    if (card._dragGhost) {
+    if (card._dragGhost && card._dragGhostRemovable) {
       card._dragGhost.remove();
-      card._dragGhost = null;
     }
+    card._dragGhost = null;
+    card._dragGhostRemovable = false;
   });
 
   card.addEventListener('pointerdown', (event) => {
@@ -705,10 +917,9 @@ const wireCard = (card) => {
     pointerDrag.ghost.classList.add('pointer-ghost');
     document.body.appendChild(pointerDrag.ghost);
 
-    const ghostWidth = sx(state.config.layout.cards.zoneWidth);
-    const ghostHeight = sy(state.config.layout.cards.zoneHeight);
-    pointerDrag.offsetX = ghostWidth / 2;
-    pointerDrag.offsetY = ghostHeight / 2;
+    const ghostRect = pointerDrag.ghost.getBoundingClientRect();
+    pointerDrag.offsetX = ghostRect.width / 2;
+    pointerDrag.offsetY = ghostRect.height / 2;
 
     card.setPointerCapture(event.pointerId);
     card.classList.add('is-dragging');
@@ -801,6 +1012,7 @@ const dropCardToZone = (card, zone, clientX, clientY) => {
   zone.classList.remove('is-over');
   zone.appendChild(card);
   zone.classList.add('has-items');
+  applyZoneImage(card);
   applyScoring(card.id, zone.dataset.zone);
   updateAllZones(card);
   if (isPhysicsMode()) {
@@ -843,6 +1055,7 @@ const dropCardToTray = (card) => {
   card.dataset.seq = 'active';
   physics.cards.delete(card);
   resetCardLayout(card);
+  applyTrayImage(card);
   removeScoring(card.id);
   updateAllZones();
 
@@ -958,6 +1171,18 @@ const updateZoneLayouts = (config) => {
   }
 };
 
+const updateDropCardSizes = () => {
+  dropzonesContainer.querySelectorAll('.card').forEach((card) => {
+    const base = getBaseImageSrc(card);
+    const zoneSrc = getDragImageSrc(base);
+    const record = zoneSrc ? state.dragImageCache.get(zoneSrc) : null;
+    const nativeSize = getScaledNativeSize(record);
+    if (nativeSize) {
+      setCardSize(card, nativeSize.width, nativeSize.height);
+    }
+  });
+};
+
 const stripJsonComments = (input) => {
   let output = '';
   let inString = false;
@@ -1028,6 +1253,10 @@ const buildCards = (config) => {
 
   tray.innerHTML = '';
   state.queue = [];
+  state.dragImageCache.clear();
+  if (state.dragImageHost) {
+    state.dragImageHost.innerHTML = '';
+  }
   for (const item of config.images.items) {
     const card = document.createElement('div');
     card.className = 'card';
@@ -1035,8 +1264,13 @@ const buildCards = (config) => {
     card.draggable = true;
     if (item.color) card.dataset.color = item.color;
     if (item.src) card.dataset.src = item.src;
+    if (item.src) card.dataset.srcOriginal = item.src;
     card.textContent = item.label || '';
     setCardVisuals(card, item);
+    const dragSrc = getDragImageSrc(item.src);
+    if (dragSrc) {
+      preloadDragImage(dragSrc);
+    }
     state.queue.push(card);
     wireCard(card);
   }
@@ -1047,6 +1281,7 @@ const buildCards = (config) => {
 const init = (config) => {
   state.config = config;
   applyConfig(config);
+  ensureDragImageHost();
   buildDropzones(config);
   buildCards(config);
 
@@ -1076,9 +1311,12 @@ const handleResize = () => {
       cardState.y *= ratioY;
       card.style.left = `${cardState.x}px`;
       card.style.top = `${cardState.y}px`;
+      cardState.width = (cardState.width || 0) * ratioX;
+      cardState.height = (cardState.height || 0) * ratioY;
     }
   }
   updateZoneLayouts(state.config);
+  updateDropCardSizes();
 };
 
 const loadConfig = async () => {
