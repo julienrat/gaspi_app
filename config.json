@@ -399,8 +399,8 @@
     ]
   },
   "timer": {
-    "seconds": 590,
-    "autoStart": true,
+    "seconds": 20,
+    "autoStart": false,
     "position": {
       "top": 24,
       "left": 2000
