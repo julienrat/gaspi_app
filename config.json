@@ -399,7 +399,7 @@
     ]
   },
   "timer": {
-    "seconds": 90,
+    "seconds": 590,
     "autoStart": true,
     "position": {
       "top": 24,
