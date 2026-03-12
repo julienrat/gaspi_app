@@ -452,6 +452,8 @@ const updateTimerUI = () => {
 const popupState = {
   timeoutId: null,
   dismissHandler: null,
+  visible: false,
+  queue: [],
 };
 
 const getPopupLayer = () => {
@@ -515,9 +517,18 @@ const hidePopup = () => {
   layer.style.pointerEvents = 'none';
   clearPopupHandlers();
   document.body.classList.remove('popup-visible');
+  popupState.visible = false;
+  if (popupState.queue.length) {
+    const next = popupState.queue.shift();
+    showPopup(next.popup, next.options);
+  }
 };
 
 const showPopup = (popup, options = {}) => {
+  if (popupState.visible) {
+    popupState.queue.push({ popup, options });
+    return;
+  }
   const layer = getPopupLayer();
   if (!layer) return;
   const defaults = state.config.targets?.popupDefaults || {};
@@ -543,6 +554,7 @@ const showPopup = (popup, options = {}) => {
   }
   layer.appendChild(img);
   document.body.classList.add('popup-visible');
+  popupState.visible = true;
 
   const popupType = options.type;
   const dismissOnAny =
@@ -589,6 +601,11 @@ const successState = {
   handler: null,
 };
 
+const completionState = {
+  refrigeratorShown: false,
+  pendingCompletion: false,
+};
+
 const clearSuccessTimeout = () => {
   if (successState.timeoutId) {
     clearTimeout(successState.timeoutId);
@@ -615,13 +632,22 @@ const showSuccessMessage = (config) => {
   return true;
 };
 
+const showCompletionPopup = () => {
+  const completion = state.config.feedback?.completionPopup;
+  if (completion?.src) {
+    showPopup(completion, { type: 'correct', dismissOnAny: true, dismissOnSelf: true });
+  }
+};
+
 const queueNextCardAfterSuccess = () => {
-  if (successState.pending) return;
-  if (!state.queue.length) {
-    const completion = state.config.feedback?.completionPopup;
-    if (completion?.src) {
-      showPopup(completion, { type: 'correct', dismissOnAny: true, dismissOnSelf: true });
+  if (successState.pending) {
+    if (!state.queue.length) {
+      completionState.pendingCompletion = true;
     }
+    return;
+  }
+  if (!state.queue.length) {
+    showCompletionPopup();
     return;
   }
   const config = state.config.feedback?.successMessage;
@@ -639,9 +665,54 @@ const queueNextCardAfterSuccess = () => {
       clearSuccessTimeout();
       document.removeEventListener('pointerdown', successState.handler, true);
       successState.handler = null;
+      if (completionState.pendingCompletion && !state.queue.length) {
+        completionState.pendingCompletion = false;
+        showCompletionPopup();
+        return;
+      }
       showNextCard();
     };
     document.addEventListener('pointerdown', successState.handler, true);
+  }
+};
+
+const getRefrigeratorPopupConfig = () => state.config.feedback?.refrigeratorPopup;
+
+const getRefrigeratorZones = (config) => {
+  const zones = config?.zones;
+  if (Array.isArray(zones) && zones.length) {
+    return zones.map((value) => String(value));
+  }
+  return ['1', '2', '3', '4', '5', '6', '7'];
+};
+
+const getAllImageIds = () => {
+  const items = state.config.images?.items || [];
+  return items.map((item) => item.id).filter(Boolean);
+};
+
+const checkRefrigeratorCompletion = () => {
+  const config = getRefrigeratorPopupConfig();
+  if (!config?.src) return;
+  if (completionState.refrigeratorShown) return;
+
+  const fridgeZones = new Set(getRefrigeratorZones(config));
+  const imageIds = getAllImageIds();
+  const fridgeTargets = imageIds.filter((id) => {
+    const { zones } = resolveTargetEntry(id);
+    return zones.some((zone) => fridgeZones.has(String(zone)));
+  });
+
+  if (!fridgeTargets.length) return;
+
+  const allPlacedInFridge = fridgeTargets.every((id) => {
+    const placement = state.placements.get(id);
+    return placement && fridgeZones.has(String(placement.zoneId));
+  });
+
+  if (allPlacedInFridge) {
+    completionState.refrigeratorShown = true;
+    showPopup(config, { type: 'correct', dismissOnAny: true, dismissOnSelf: true });
   }
 };
 
@@ -698,6 +769,38 @@ const setCardSize = (card, width, height) => {
   card.style.height = `${height}px`;
 };
 
+const getCardScale = (card) => {
+  if (!card) return 1;
+  const raw = Number(card.dataset.scale);
+  if (Number.isFinite(raw) && raw > 0) return raw;
+  return 1;
+};
+
+const getZoneFitScale = () => {
+  const scale = state.config.layout?.cards?.zoneFitScale;
+  if (typeof scale === 'number' && Number.isFinite(scale)) {
+    return Math.max(0, scale);
+  }
+  return 1;
+};
+
+const fitSizeToZone = (zone, width, height) => {
+  if (!zone || !width || !height) return { width, height };
+  const gravity = getGravityConfig();
+  const padding = gravity.padding ?? 10;
+  const padX = sx(padding);
+  const padY = sy(padding);
+  const maxWidth = Math.max(0, zone.clientWidth - padX * 2);
+  const maxHeight = Math.max(0, zone.clientHeight - padY * 2);
+  if (!maxWidth || !maxHeight) return { width, height };
+  const scale = Math.min(1, maxWidth / width, maxHeight / height);
+  const finalScale = Math.min(1, scale * getZoneFitScale());
+  return {
+    width: Math.max(1, Math.round(width * finalScale)),
+    height: Math.max(1, Math.round(height * finalScale)),
+  };
+};
+
 const getScaledNativeSize = (record) => {
   if (!record?.loaded) return null;
   return {
@@ -716,18 +819,25 @@ const setCardImage = (card, src) => {
 
 const getBaseImageSrc = (card) => card.dataset.srcOriginal || card.dataset.src || '';
 
-const applyZoneImage = (card) => {
+const applyZoneImage = (card, zone = null) => {
   const base = getBaseImageSrc(card);
   const zoneSrc = getDragImageSrc(base);
   if (zoneSrc) {
     setCardImage(card, zoneSrc);
     const record = state.dragImageCache.get(zoneSrc);
     const nativeSize = getScaledNativeSize(record);
+    const fallbackWidth = sx(state.config.layout.cards.zoneWidth);
+    const fallbackHeight = sy(state.config.layout.cards.zoneHeight);
+    const scale = getCardScale(card);
+    const baseWidth = (nativeSize ? nativeSize.width : fallbackWidth) * scale;
+    const baseHeight = (nativeSize ? nativeSize.height : fallbackHeight) * scale;
+    const parentZone = zone || card.closest('.dropzone');
+    const fitted = fitSizeToZone(parentZone, baseWidth, baseHeight);
     if (nativeSize) {
-      setCardSize(card, nativeSize.width, nativeSize.height);
       card.dataset.nativeWidth = String(record.width);
       card.dataset.nativeHeight = String(record.height);
     }
+    setCardSize(card, fitted.width, fitted.height);
   }
 };
 
@@ -822,8 +932,9 @@ const buildDragGhost = (card) => {
   const nativeSize = getScaledNativeSize(record);
   const fallbackWidth = sx(state.config.layout.cards.zoneWidth);
   const fallbackHeight = sy(state.config.layout.cards.zoneHeight);
-  const width = nativeSize ? nativeSize.width : fallbackWidth;
-  const height = nativeSize ? nativeSize.height : fallbackHeight;
+  const scale = getCardScale(card);
+  const width = (nativeSize ? nativeSize.width : fallbackWidth) * scale;
+  const height = (nativeSize ? nativeSize.height : fallbackHeight) * scale;
   ghost.style.width = `${width}px`;
   ghost.style.height = `${height}px`;
   const allowColor =
@@ -1449,10 +1560,11 @@ const dropCardToZone = (card, zone, clientX, clientY) => {
   zone.classList.remove('is-over');
   zone.appendChild(card);
   zone.classList.add('has-items');
-  applyZoneImage(card);
+  applyZoneImage(card, zone);
   applyScoring(card.id, zoneId);
   const popupData = getPopupForDrop(card.id, zoneId, true);
   if (popupData) showPopup(popupData.popup, { type: popupData.type });
+  checkRefrigeratorCompletion();
   updateAllZones(card);
   if (isPhysicsMode()) {
     physics.cards.delete(card);
@@ -1619,9 +1731,18 @@ const updateDropCardSizes = () => {
     const zoneSrc = getDragImageSrc(base);
     const record = zoneSrc ? state.dragImageCache.get(zoneSrc) : null;
     const nativeSize = getScaledNativeSize(record);
+    const fallbackWidth = sx(state.config.layout.cards.zoneWidth);
+    const fallbackHeight = sy(state.config.layout.cards.zoneHeight);
+    const scale = getCardScale(card);
+    const baseWidth = (nativeSize ? nativeSize.width : fallbackWidth) * scale;
+    const baseHeight = (nativeSize ? nativeSize.height : fallbackHeight) * scale;
+    const zone = card.closest('.dropzone');
+    const fitted = fitSizeToZone(zone, baseWidth, baseHeight);
     if (nativeSize) {
-      setCardSize(card, nativeSize.width, nativeSize.height);
+      card.dataset.nativeWidth = String(record.width);
+      card.dataset.nativeHeight = String(record.height);
     }
+    setCardSize(card, fitted.width, fitted.height);
   });
 };
 
@@ -1699,7 +1820,12 @@ const buildCards = (config) => {
   if (state.dragImageHost) {
     state.dragImageHost.innerHTML = '';
   }
-  for (const item of config.images.items) {
+  const items = [...config.images.items];
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  for (const item of items) {
     const card = document.createElement('div');
     card.className = 'card';
     card.id = item.id;
@@ -1707,6 +1833,7 @@ const buildCards = (config) => {
     if (item.color) card.dataset.color = item.color;
     if (item.src) card.dataset.src = item.src;
     if (item.src) card.dataset.srcOriginal = item.src;
+    if (item.scale != null) card.dataset.scale = String(item.scale);
     card.textContent = item.label || '';
     setCardVisuals(card, item);
     const dragSrc = getDragImageSrc(item.src);
@@ -1736,6 +1863,8 @@ const startGame = (config) => {
   state.score = 0;
   state.placements.clear();
   state.attempts.clear();
+  completionState.refrigeratorShown = false;
+  completionState.pendingCompletion = false;
   updateScore(0);
   resetTimer(config.timer.seconds);
   updateAllZones();

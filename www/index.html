@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#050b1f" />
+    <title>Jeu de Drag & Drop</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Oxanium:wght@400;700&family=Press+Start+2P&display=swap"
+    />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="stage" aria-label="Jeu de manipulation d'images">
+      <section class="backdrop-layer" aria-hidden="true"></section>
+      <section class="calque-layer" aria-hidden="true"></section>
+      <section class="overlay" aria-label="Écrans et consignes"></section>
+      <section class="hud" aria-label="Score et temps">
+        <div class="hud-card">
+          <span class="hud-label">Score</span>
+          <span class="hud-value" data-score>0</span>
+        </div>
+        <div class="hud-card">
+          <span class="hud-label">Temps</span>
+          <span class="hud-value" data-timer>00:00</span>
+        </div>
+      </section>
+
+      <section class="tray" aria-label="Images à glisser"></section>
+
+      <section class="dropzones" aria-label="Zones de dépôt"></section>
+      <section class="feedback-layer" aria-hidden="true"></section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>

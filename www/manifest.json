@@ -1,0 +1,8 @@
+{
+  "name": "Jeu Drag & Drop",
+  "short_name": "DragDrop",
+  "start_url": ".",
+  "display": "fullscreen",
+  "background_color": "#050b1f",
+  "theme_color": "#050b1f"
+}

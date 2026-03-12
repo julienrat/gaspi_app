@@ -36,7 +36,7 @@
     "dropzoneItems": 0
   },
   "debug": {
-    "showZoneLabels": false
+    "showZoneLabels": true
   },
   "startScreen": {
     "enabled": true,
@@ -79,6 +79,26 @@
       "size": {
         "width": 416,
         "height": 294
+      }
+    },
+    "refrigeratorPopup": {
+      "src": "images/textes-popup/pop.Refrigerateur.png",
+      "zones": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7"
+      ],
+      "position": {
+        "top": 48,
+        "left": 669
+      },
+      "size": {
+        "width": 1251,
+        "height": 319
       }
     },
     "completionPopup": {
@@ -352,6 +372,7 @@
         "id": "img-13",
         "label": "13",
         "src": "images/images_aliments/13.Fruits.G.png",
+        "scale": 1.15,
         "color": "coral"
       },
       {

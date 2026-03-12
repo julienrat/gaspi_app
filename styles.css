@@ -271,7 +271,7 @@ body.is-start-screen .dropzones {
   transition: transform 140ms ease, box-shadow 140ms ease, opacity 120ms ease;
   box-shadow: 0 10px 18px rgba(0, 0, 0, 0.3);
   animation: rise 380ms ease both;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
 }

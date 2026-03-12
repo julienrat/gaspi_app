@@ -1,0 +1,6 @@
+{
+  "appId": "com.julien2002.gaspipi",
+  "appName": "GASPIPI",
+  "webDir": "www",
+  "server": { "androidScheme": "https" }
+}
