@@ -1,6 +1,7 @@
 # Jeu Drag & Drop — Configuration
 
 GitHub Pages : https://julienrat.github.io/gaspi_app/
+Activité 2 (index) : https://julienrat.github.io/gaspi_app/activity2/
 
 Ce projet est piloté par `config.json`. Le fichier doit rester **JSON strict** (pas de commentaires).
 Toutes les positions sont exprimées **en référence à `layout.screen`** et sont mises à l’échelle selon la taille d’écran réelle (origine 0,0 en haut à gauche).
