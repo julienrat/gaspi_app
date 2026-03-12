@@ -19,6 +19,7 @@
   },
   "hud": {
     "fontFamily": "\"Oxanium\", \"Segoe UI\", system-ui, sans-serif",
+    "scoreFontFamily": "\"FuturaPTBold\", \"Oxanium\", \"Segoe UI\", system-ui, sans-serif",
     "color": "#000000",
     "fontSize": "1.5rem",
     "showScoreBackground": false,
@@ -71,7 +72,7 @@
   "feedback": {
     "successMessage": {
       "src": "images/textes-popup/txt.01.bien joue.png",
-      "duration": 15000,
+      "duration": 3000,
       "position": {
         "top": 181,
         "left": 150
@@ -104,8 +105,8 @@
     "completionPopup": {
       "src": "images/textes-popup/pop.Fin.png",
       "position": {
-        "top": 48,
-        "left": 669
+        "x": 960,
+        "y": 600
       },
       "size": {
         "width": 1251,
@@ -253,7 +254,7 @@
           "id": "11",
           "label": "Zone 11",
           "width": 206,
-          "height": 85,
+          "height": 100,
           "position": {
             "top": 551,
             "left": 161
@@ -263,7 +264,7 @@
           "id": "12",
           "label": "Zone 12",
           "width": 191,
-          "height": 132,
+          "height": 152,
           "position": {
             "top": 551,
             "left": 412
@@ -462,7 +463,7 @@
     ],
     "wrongPopup": {
       "src": "images/textes-popup/pop.loupe.png",
-      "duration": 5000
+      "duration": 3000
     },
     "correctPopup": null,
     "popupDefaults": {

@@ -30,12 +30,22 @@
   --bg-repeat: no-repeat;
   --hud-bg-alpha: 0.92;
   --hud-font: "Oxanium", "Segoe UI", system-ui, sans-serif;
+  --hud-score-font: var(--hud-font);
   --hud-color: #e6f1ff;
   --hud-font-size: 1.25rem;
   --hud-border-alpha: 1;
   --tray-alpha: 0.92;
   --dropzones-alpha: 0.92;
   --dropzone-item-alpha: 0.7;
+}
+
+@font-face {
+  font-family: "FuturaPTBold";
+  src: url("images/font/futura-condensed-pt-cufonfonts/futura-pt-bold-589e44b6aacd3.otf")
+    format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
 }
 
 * {
@@ -191,6 +201,11 @@ body.is-start-screen .dropzones {
   border-color: transparent;
 }
 
+.hud-card.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+}
+
 .hud-card.text-only {
   background: none;
   border-color: transparent;
@@ -222,6 +237,10 @@ body.is-start-screen .dropzones {
   font-weight: 700;
   color: var(--hud-color);
   font-family: var(--hud-font);
+}
+
+.hud-card:first-child .hud-value {
+  font-family: var(--hud-score-font);
 }
 
 .tray {

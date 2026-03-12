@@ -358,6 +358,9 @@ const applyConfig = (config) => {
     if (config.hud.fontFamily) {
       setCssVar('--hud-font', config.hud.fontFamily);
     }
+    if (config.hud.scoreFontFamily) {
+      setCssVar('--hud-score-font', config.hud.scoreFontFamily);
+    }
     if (config.hud.color) {
       setCssVar('--hud-color', config.hud.color);
     }
@@ -521,6 +524,15 @@ const hidePopup = () => {
   if (popupState.queue.length) {
     const next = popupState.queue.shift();
     showPopup(next.popup, next.options);
+    return;
+  }
+  if (
+    completionState.pendingCompletion &&
+    !completionState.completedShown &&
+    !successState.pending
+  ) {
+    completionState.pendingCompletion = false;
+    showCompletionPopup();
   }
 };
 
@@ -628,15 +640,44 @@ const showSuccessMessage = (config) => {
     successState.timeoutId = window.setTimeout(() => {
       hideSuccessMessage();
       successState.timeoutId = null;
+      if (successState.pending) {
+        advanceAfterSuccess();
+      }
     }, duration);
   }
   return true;
+};
+
+const advanceAfterSuccess = () => {
+  if (!successState.pending) return;
+  successState.pending = false;
+  hideSuccessMessage();
+  clearSuccessTimeout();
+  if (successState.handler) {
+    document.removeEventListener('pointerdown', successState.handler, true);
+    successState.handler = null;
+  }
+  if (completionState.pendingCompletion && !state.queue.length) {
+    if (popupState.visible || popupState.queue.length) {
+      return;
+    }
+    completionState.pendingCompletion = false;
+    showCompletionPopup();
+    return;
+  }
+  showNextCard();
 };
 
 const showCompletionPopup = () => {
   const completion = state.config.feedback?.completionPopup;
   if (completion?.src && !completionState.completedShown) {
     completionState.completedShown = true;
+    scoreCard?.classList.add('is-hidden');
+    const dropImage = backdropLayer?.querySelector('.drop-image');
+    if (dropImage) {
+      dropImage.style.opacity = '0';
+      dropImage.style.visibility = 'hidden';
+    }
     showPopup(completion, { type: 'correct', dismissOnAny: true, dismissOnSelf: true });
   }
 };
@@ -661,18 +702,7 @@ const queueNextCardAfterSuccess = () => {
   showSuccessMessage(config);
   if (!successState.handler) {
     successState.handler = () => {
-      if (!successState.pending) return;
-      successState.pending = false;
-      hideSuccessMessage();
-      clearSuccessTimeout();
-      document.removeEventListener('pointerdown', successState.handler, true);
-      successState.handler = null;
-      if (completionState.pendingCompletion && !state.queue.length) {
-        completionState.pendingCompletion = false;
-        showCompletionPopup();
-        return;
-      }
-      showNextCard();
+      advanceAfterSuccess();
     };
     document.addEventListener('pointerdown', successState.handler, true);
   }
@@ -724,7 +754,7 @@ const checkAllPlacedCompletion = () => {
   if (!imageIds.length) return;
   const allPlaced = imageIds.every((id) => state.placements.has(id));
   if (allPlaced) {
-    if (successState.pending) {
+    if (successState.pending || popupState.visible || popupState.queue.length) {
       completionState.pendingCompletion = true;
       return;
     }
@@ -995,6 +1025,13 @@ const clearOverState = () => {
     pointerDrag.overEl.classList.remove('is-over');
     pointerDrag.overEl = null;
   }
+};
+
+const clearAllOverStates = () => {
+  dropzonesContainer?.querySelectorAll('.dropzone.is-over').forEach((zone) => {
+    zone.classList.remove('is-over');
+  });
+  tray?.classList.remove('is-over');
 };
 
 const updatePointerOver = (clientX, clientY) => {
@@ -1364,6 +1401,7 @@ const wireCard = (card) => {
 
   card.addEventListener('dragend', () => {
     card.classList.remove('is-dragging');
+    clearAllOverStates();
     if (card._dragGhost && card._dragGhostRemovable) {
       card._dragGhost.remove();
     }
@@ -1562,6 +1600,39 @@ const dropCardToZone = (card, zone, clientX, clientY) => {
   if (!card || !zone) return;
   const wasActive = card.dataset.seq === 'active';
   const zoneId = zone.dataset.zone;
+  const existingPlacement = state.placements.get(card.id);
+
+  if (existingPlacement) {
+    const lockedZoneId = String(existingPlacement.zoneId);
+    const targetZoneId = String(zoneId);
+    if (lockedZoneId !== targetZoneId) {
+      const lockedZone = dropzonesContainer.querySelector(
+        `.dropzone[data-zone="${lockedZoneId}"]`
+      );
+      if (lockedZone) {
+        lockedZone.appendChild(card);
+        lockedZone.classList.add('has-items');
+        applyZoneImage(card, lockedZone);
+        updateAllZones(card);
+        if (isPhysicsMode()) {
+          physics.cards.delete(card);
+          startPhysicsDrop(card, lockedZone, clientX, clientY);
+        }
+      }
+      return;
+    }
+
+    zone.classList.remove('is-over');
+    zone.appendChild(card);
+    zone.classList.add('has-items');
+    applyZoneImage(card, zone);
+    updateAllZones(card);
+    if (isPhysicsMode()) {
+      physics.cards.delete(card);
+      startPhysicsDrop(card, zone, clientX, clientY);
+    }
+    return;
+  }
   const isCorrect = isCorrectDrop(card.id, zoneId);
 
   if (!isCorrect) {
@@ -1604,6 +1675,23 @@ const dropCardToZone = (card, zone, clientX, clientY) => {
 
 const dropCardToTray = (card) => {
   if (!card) return false;
+  const existingPlacement = state.placements.get(card.id);
+  if (existingPlacement) {
+    const lockedZone = dropzonesContainer.querySelector(
+      `.dropzone[data-zone="${existingPlacement.zoneId}"]`
+    );
+    if (lockedZone) {
+      lockedZone.appendChild(card);
+      lockedZone.classList.add('has-items');
+      applyZoneImage(card, lockedZone);
+      updateAllZones(card);
+      if (isPhysicsMode()) {
+        physics.cards.delete(card);
+        startPhysicsDrop(card, lockedZone);
+      }
+    }
+    return false;
+  }
   const current = tray.querySelector('.card');
   if (current && current !== card) {
     tray.animate(
@@ -1648,6 +1736,7 @@ const handleDropToZone = (event) => {
   if (!card) return;
 
   dropCardToZone(card, zone, event.clientX, event.clientY);
+  clearAllOverStates();
 };
 
 const handleDropToTray = (event) => {
@@ -1659,6 +1748,7 @@ const handleDropToTray = (event) => {
   if (!card) return;
 
   dropCardToTray(card);
+  clearAllOverStates();
 };
 
 const wireDropzone = (zone) => {
@@ -1883,6 +1973,12 @@ const startGame = (config) => {
   completionState.refrigeratorShown = false;
   completionState.pendingCompletion = false;
   completionState.completedShown = false;
+  scoreCard?.classList.remove('is-hidden');
+  const dropImage = backdropLayer?.querySelector('.drop-image');
+  if (dropImage) {
+    dropImage.style.opacity = '';
+    dropImage.style.visibility = '';
+  }
   updateScore(0);
   resetTimer(config.timer.seconds);
   updateAllZones();
