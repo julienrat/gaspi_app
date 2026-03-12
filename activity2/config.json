@@ -188,7 +188,7 @@
     },
     "correctPopups": {
       "img-1": {
-        "src": "popup/popup.1.alt_Transf.confiture.png",
+        "src": "popup/popup.1.alt_Transf.tarte.png",
         "size": { "width": 739, "height": 708 },
         "position": { "x": 601.651, "y": 133.161 }
       },
@@ -198,12 +198,12 @@
         "position": { "x": 601.651, "y": 133.161 }
       },
       "img-3": {
-        "src": "popup/popup.1.alt_Transf.tarte.png",
+        "src": "popup/popup.1.alt_Transf.confiture.png",
         "size": { "width": 739, "height": 708 },
         "position": { "x": 601.651, "y": 133.161 }
       },
       "img-4": {
-        "src": "popup/popup.2.alt_Transf.gaspacho.png",
+        "src": "popup/popup.2.alt_Transf.sauce.png",
         "size": { "width": 739, "height": 708 },
         "position": { "x": 601.651, "y": 133.161 }
       },
@@ -213,7 +213,7 @@
         "position": { "x": 601.651, "y": 133.161 }
       },
       "img-6": {
-        "src": "popup/popup.2.alt_Transf.sauce.png",
+        "src": "popup/popup.2.alt_Transf.gaspacho.png",
         "size": { "width": 739, "height": 708 },
         "position": { "x": 601.651, "y": 133.161 }
       },

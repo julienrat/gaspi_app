@@ -390,6 +390,7 @@ const renderTrayForButton = (buttonId) => {
 
 const setActiveButton = (buttonId) => {
   if (state.completedButtons.has(buttonId)) return;
+  resetDropzones();
   state.activeButtonId = buttonId;
   buttonsEl.querySelectorAll('.action-btn').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.button === buttonId);
@@ -488,6 +489,27 @@ const handleDrop = (card, zone) => {
 
 const clearOver = () => {
   dropzonesEl.querySelectorAll('.dropzone.is-over').forEach((z) => z.classList.remove('is-over'));
+};
+
+const resetDropzones = () => {
+  const cardsInZones = dropzonesEl.querySelectorAll('.card');
+  cardsInZones.forEach((card) => {
+    const cardId = card.id;
+    card.remove();
+    if (state.completed.has(cardId)) {
+      state.completed.delete(cardId);
+      const buttonId = state.cardToButton.get(cardId);
+      if (buttonId) {
+        const set = state.completedByButton.get(buttonId);
+        if (set) {
+          set.delete(cardId);
+          if (!set.size) state.completedByButton.delete(buttonId);
+        }
+        state.completedButtons.delete(buttonId);
+      }
+    }
+  });
+  clearOver();
 };
 
 const wireCard = (card) => {
