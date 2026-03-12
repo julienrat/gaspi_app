@@ -1,0 +1,224 @@
+{
+  "background": {
+    "color": "#081225",
+    "image": "2.interface_generale.png",
+    "size": "100% 100%",
+    "position": "center",
+    "repeat": "no-repeat"
+  },
+  "screens": {
+    "intro": {
+      "src": "1.Intro.bn.png",
+      "position": { "x": 960, "y": 600 },
+      "size": { "width": 1920, "height": 1200 }
+    },
+    "finish": {
+      "src": "3.screen_fin.png",
+      "position": { "x": 960, "y": 600 },
+      "size": { "width": 1920, "height": 1200 }
+    }
+  },
+  "layout": {
+    "screen": { "width": 1920, "height": 1200 },
+    "buttons": { "top": 24, "left": 24, "gap": 12, "size": { "width": 194, "height": 194 } },
+    "tray": {
+      "top": 140,
+      "left": 24,
+      "gap": 12,
+      "columns": 3,
+      "positions": [
+        { "x": 163.583, "y": 609.922 },
+        { "x": 163.583, "y": 792.011 },
+        { "x": 163.583, "y": 974.141 }
+      ]
+    },
+    "cards": { "width": 298.959, "height": 123.189 },
+    "dropzones": {
+      "top": 138.808,
+      "left": 1399.126,
+      "gap": 317.468,
+      "cornerRadius": 41.832,
+      "zones": [
+        { "id": "1", "width": 420.304, "height": 276.444, "x": 1399.126, "y": 138.808 },
+        { "id": "2", "width": 420.304, "height": 276.444, "x": 1399.126, "y": 456.276 },
+        { "id": "3", "width": 420.304, "height": 276.444, "x": 1399.126, "y": 773.745 }
+      ]
+    }
+  },
+  "buttons": [
+    {
+      "id": "btn-1",
+      "label": "Bouton 1",
+      "image": "aliments/1.aliment.blanc.png",
+      "imageActive": "aliments/1.aliments.bleu.png",
+      "imageDisabled": "aliments/1.aliments.grise.png",
+      "position": { "x": 113.597, "y": 106.907 },
+      "trayFrame": {
+        "src": "aliments_transformes/1.cadre.alt_Transf.png",
+        "position": { "x": 0, "y": 0 },
+        "size": { "width": 1920, "height": 1200 }
+      },
+      "images": ["img-1", "img-2", "img-3"]
+    },
+    {
+      "id": "btn-2",
+      "label": "Bouton 2",
+      "image": "aliments/2.aliments.blanc.png",
+      "imageActive": "aliments/2.aliments.bleu.png",
+      "imageDisabled": "aliments/2.aliments.grise.png",
+      "position": { "x": 317.374, "y": 106.907 },
+      "trayFrame": {
+        "src": "aliments_transformes/2.cadre.alt_Transf.png",
+        "position": { "x": 0, "y": 0 },
+        "size": { "width": 1920, "height": 1200 }
+      },
+      "images": ["img-4", "img-5", "img-6"]
+    },
+    {
+      "id": "btn-3",
+      "label": "Bouton 3",
+      "image": "aliments/3.aliment.blanc.png",
+      "imageActive": "aliments/3.aliments.bleu.png",
+      "imageDisabled": "aliments/3.aliments.grise.png",
+      "position": { "x": 113.597, "y": 310.94 },
+      "trayFrame": {
+        "src": "aliments_transformes/3.cadre.alt_Transf.png",
+        "position": { "x": 0, "y": 0 },
+        "size": { "width": 1920, "height": 1200 }
+      },
+      "images": ["img-7", "img-8"]
+    },
+    {
+      "id": "btn-4",
+      "label": "Bouton 4",
+      "image": "aliments/4.aliment.blanc.png",
+      "imageActive": "aliments/4.aliments.bleu.png",
+      "imageDisabled": "aliments/4.aliments.grise.png",
+      "position": { "x": 317.374, "y": 310.94 },
+      "trayFrame": {
+        "src": "aliments_transformes/4.cadre.alt_Transf.png",
+        "position": { "x": 0, "y": 0 },
+        "size": { "width": 1920, "height": 1200 }
+      },
+      "images": ["img-10", "img-11"]
+    }
+  ],
+  "images": {
+    "items": [
+      {
+        "id": "img-1",
+        "label": "1",
+        "color": "#ff9a8b",
+        "src": "aliments_transformes/1.alt_Transf.tarte.png"
+      },
+      {
+        "id": "img-2",
+        "label": "2",
+        "color": "#ffd56a",
+        "src": "aliments_transformes/1.alt_Transf.sac.png"
+      },
+      {
+        "id": "img-3",
+        "label": "3",
+        "color": "#9be7c4",
+        "src": "aliments_transformes/1.alt_Transf.confiture.png"
+      },
+      {
+        "id": "img-4",
+        "label": "4",
+        "color": "#9fc7ff",
+        "src": "aliments_transformes/2.alt_Transf.sauce.png"
+      },
+      {
+        "id": "img-5",
+        "label": "5",
+        "color": "#c8b6ff",
+        "src": "aliments_transformes/2.alt_Transf.sac.png"
+      },
+      {
+        "id": "img-6",
+        "label": "6",
+        "color": "#ffb3c1",
+        "src": "aliments_transformes/2.alt_Transf.gaspacho.png"
+      },
+      {
+        "id": "img-7",
+        "label": "7",
+        "color": "#b8f2e6",
+        "src": "aliments_transformes/3.alt_Transf.sac.png"
+      },
+      {
+        "id": "img-8",
+        "label": "8",
+        "color": "#f1c0e8",
+        "src": "aliments_transformes/3.alt_Transf.perdu.png"
+      },
+      { "id": "img-9", "label": "9", "color": "#a3cef1", "src": "" },
+      {
+        "id": "img-10",
+        "label": "10",
+        "color": "#f7d59c",
+        "src": "aliments_transformes/4.alt_Transf.gratin.png"
+      },
+      {
+        "id": "img-11",
+        "label": "11",
+        "color": "#bde0fe",
+        "src": "aliments_transformes/4.alt_Transf.tupper.png"
+      },
+      { "id": "img-12", "label": "12", "color": "#caffbf", "src": "" }
+    ]
+  },
+  "targets": {
+    "wrongPopup": {
+      "src": "popup/popup.loupe.png",
+      "duration": 5000,
+      "size": { "width": 722, "height": 505 },
+      "position": { "x": 609.636, "y": 200.169 }
+    },
+    "placePopup": {
+      "src": "popup/popup.place.alt_Transf.png",
+      "size": { "width": 739, "height": 233 },
+      "position": { "x": 601.651, "y": 928.575 }
+    },
+    "chosenPopup": {
+      "src": "popup/popup.choisi.aliment.png",
+      "size": { "width": 739, "height": 233 },
+      "position": { "x": 601.651, "y": 928.575 }
+    },
+    "correctPopups": {
+      "img-1": {
+        "src": "popup/popup.1.alt_Transf.confiture.png",
+        "size": { "width": 739, "height": 708 },
+        "position": { "x": 601.651, "y": 133.161 }
+      },
+      "img-2": {
+        "src": "popup/popup.1.alt_Transf.sac.png",
+        "size": { "width": 739, "height": 708 },
+        "position": { "x": 601.651, "y": 133.161 }
+      },
+      "img-3": {
+        "src": "popup/popup.1.alt_Transf.tarte.png",
+        "size": { "width": 739, "height": 708 },
+        "position": { "x": 601.651, "y": 133.161 }
+      }
+    },
+    "popupDefaults": {
+      "position": { "x": 960, "y": 600 }
+    },
+    "items": {
+      "img-1": ["1"],
+      "img-2": ["3"],
+      "img-3": ["2"],
+      "img-4": ["2"],
+      "img-5": ["3"],
+      "img-6": ["1"],
+      "img-7": ["3"],
+      "img-8": ["1"],
+      "img-9": ["3"],
+      "img-10": ["1"],
+      "img-11": ["3"],
+      "img-12": ["3"]
+    }
+  }
+}

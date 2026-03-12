@@ -1,0 +1,204 @@
+:root {
+  --bg-color: #081225;
+  --bg-image: none;
+  --bg-size: cover;
+  --bg-position: center;
+  --bg-repeat: no-repeat;
+
+  --buttons-top: 24px;
+  --buttons-left: 24px;
+  --buttons-gap: 12px;
+
+  --tray-top: 120px;
+  --tray-left: 24px;
+  --tray-gap: 12px;
+  --card-width: 160px;
+  --card-height: 120px;
+
+  --dropzones-top: 120px;
+  --dropzones-right: 24px;
+  --dropzone-gap: 16px;
+  --dropzone-width: 200px;
+  --dropzone-height: 160px;
+
+  --popup-width: 600px;
+  --popup-height: 200px;
+  --popup-left: 50%;
+  --popup-top: 50%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--bg-color);
+  background-image: var(--bg-image);
+  background-size: var(--bg-size);
+  background-position: var(--bg-position);
+  background-repeat: var(--bg-repeat);
+}
+
+.stage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.screens {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.screen-image {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  pointer-events: auto;
+  user-select: none;
+  object-fit: fill;
+}
+
+.is-hidden {
+  display: none !important;
+}
+
+.popup-image {
+  position: absolute;
+  left: var(--popup-left);
+  top: var(--popup-top);
+  width: var(--popup-width);
+  height: var(--popup-height);
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+  user-select: none;
+}
+
+.buttons {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.action-btn {
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn.active {
+  outline: none;
+}
+
+.action-btn__img {
+  display: block;
+  width: var(--button-width, auto);
+  height: var(--button-height, auto);
+}
+
+.tray {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.tray-frame {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  z-index: 0;
+  object-fit: fill;
+}
+
+.card {
+  width: var(--card-width);
+  height: var(--card-height);
+  border-radius: 10px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #dfe7ff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #081225;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  pointer-events: auto;
+  position: absolute;
+  z-index: 1;
+}
+
+.card.is-dragging {
+  opacity: 0;
+}
+
+.dropzones {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.dropzone {
+  width: var(--dropzone-width);
+  height: var(--dropzone-height);
+  border-radius: var(--dropzone-radius, 14px);
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+  background: rgba(8, 18, 38, 0.25);
+  display: grid;
+  place-items: center;
+  position: relative;
+  pointer-events: auto;
+}
+
+.dropzone.is-over {
+  border-color: #2ef2ff;
+  background: rgba(46, 242, 255, 0.15);
+}
+
+.dropzone .card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.drag-ghost {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  width: var(--card-width);
+  height: var(--card-height);
+  border-radius: 10px;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #dfe7ff;
+}
