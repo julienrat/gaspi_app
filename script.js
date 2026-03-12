@@ -604,6 +604,7 @@ const successState = {
 const completionState = {
   refrigeratorShown: false,
   pendingCompletion: false,
+  completedShown: false,
 };
 
 const clearSuccessTimeout = () => {
@@ -634,7 +635,8 @@ const showSuccessMessage = (config) => {
 
 const showCompletionPopup = () => {
   const completion = state.config.feedback?.completionPopup;
-  if (completion?.src) {
+  if (completion?.src && !completionState.completedShown) {
+    completionState.completedShown = true;
     showPopup(completion, { type: 'correct', dismissOnAny: true, dismissOnSelf: true });
   }
 };
@@ -713,6 +715,20 @@ const checkRefrigeratorCompletion = () => {
   if (allPlacedInFridge) {
     completionState.refrigeratorShown = true;
     showPopup(config, { type: 'correct', dismissOnAny: true, dismissOnSelf: true });
+  }
+};
+
+const checkAllPlacedCompletion = () => {
+  if (completionState.completedShown) return;
+  const imageIds = getAllImageIds();
+  if (!imageIds.length) return;
+  const allPlaced = imageIds.every((id) => state.placements.has(id));
+  if (allPlaced) {
+    if (successState.pending) {
+      completionState.pendingCompletion = true;
+      return;
+    }
+    showCompletionPopup();
   }
 };
 
@@ -1565,6 +1581,7 @@ const dropCardToZone = (card, zone, clientX, clientY) => {
   const popupData = getPopupForDrop(card.id, zoneId, true);
   if (popupData) showPopup(popupData.popup, { type: popupData.type });
   checkRefrigeratorCompletion();
+  checkAllPlacedCompletion();
   updateAllZones(card);
   if (isPhysicsMode()) {
     physics.cards.delete(card);
@@ -1865,6 +1882,7 @@ const startGame = (config) => {
   state.attempts.clear();
   completionState.refrigeratorShown = false;
   completionState.pendingCompletion = false;
+  completionState.completedShown = false;
   updateScore(0);
   resetTimer(config.timer.seconds);
   updateAllZones();
