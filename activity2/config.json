@@ -46,6 +46,17 @@
       ]
     }
   },
+  "drag": {
+    "hideSource": true,
+    "ghost": {
+      "enabled": true,
+      "opacity": 1,
+      "scale": 1
+    }
+  },
+  "cards": {
+    "showLabels": false
+  },
   "buttons": [
     {
       "id": "btn-1",

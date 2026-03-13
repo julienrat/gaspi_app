@@ -155,7 +155,7 @@ body {
 }
 
 .card.is-dragging {
-  opacity: 0;
+  opacity: 1;
 }
 
 .dropzones {

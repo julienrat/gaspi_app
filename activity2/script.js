@@ -201,6 +201,76 @@ const showPopup = (popup, options = {}) => {
   showPopupGroup(popup, options);
 };
 
+const getDragConfig = () => state.config?.drag || {};
+const getGhostConfig = () => getDragConfig().ghost || {};
+
+const buildDragGhost = (card) => {
+  const styles = window.getComputedStyle(card);
+  const scale = getGhostConfig().scale ?? 1;
+  const width = parseFloat(styles.width) || card.offsetWidth;
+  const height = parseFloat(styles.height) || card.offsetHeight;
+  const opacity = getGhostConfig().opacity;
+  const useCanvas = opacity != null && Number(opacity) < 1;
+
+  if (useCanvas) {
+    const canvas = document.createElement('canvas');
+    const w = Math.max(1, Math.round(width * scale));
+    const h = Math.max(1, Math.round(height * scale));
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const alpha = Number(opacity);
+      ctx.globalAlpha = Number.isFinite(alpha) ? alpha : 1;
+      const bg = styles.backgroundColor;
+      if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, w, h);
+      }
+      const bgImage = styles.backgroundImage || '';
+      const match = bgImage.match(/url\\([\"']?(.*?)[\"']?\\)/i);
+      const url = match?.[1];
+      if (url) {
+        const img = new Image();
+        img.src = url;
+        if (img.complete && img.naturalWidth > 0) {
+          const scaleFit = Math.min(w / img.naturalWidth, h / img.naturalHeight);
+          const dw = img.naturalWidth * scaleFit;
+          const dh = img.naturalHeight * scaleFit;
+          const dx = (w - dw) / 2;
+          const dy = (h - dh) / 2;
+          ctx.drawImage(img, dx, dy, dw, dh);
+        }
+      }
+    }
+    canvas.className = 'drag-ghost';
+    canvas.style.position = 'absolute';
+    canvas.style.left = '-9999px';
+    canvas.style.top = '-9999px';
+    return canvas;
+  }
+
+  const ghost = document.createElement('div');
+  ghost.className = 'drag-ghost';
+  ghost.style.width = `${width * scale}px`;
+  ghost.style.height = `${height * scale}px`;
+  ghost.style.backgroundImage = styles.backgroundImage;
+  ghost.style.backgroundColor = styles.backgroundColor;
+  ghost.style.backgroundSize = styles.backgroundSize || 'contain';
+  ghost.style.backgroundPosition = styles.backgroundPosition || 'center';
+  ghost.style.backgroundRepeat = styles.backgroundRepeat || 'no-repeat';
+  ghost.style.borderRadius = styles.borderRadius;
+  if (opacity != null) {
+    const value = String(opacity);
+    ghost.style.opacity = value;
+    ghost.style.filter = `opacity(${value})`;
+  }
+  ghost.style.position = 'absolute';
+  ghost.style.left = '-9999px';
+  ghost.style.top = '-9999px';
+  return ghost;
+};
+
 const dismissPopupsForDrag = () => {
   if (!state.popup.visible && !state.popup.queue.length) return;
   state.popup.queue = [];
@@ -359,7 +429,8 @@ const buildCards = (config) => {
     const card = document.createElement('div');
     card.className = 'card';
     card.id = item.id;
-    card.textContent = item.label || '';
+    const showLabels = config.cards?.showLabels ?? true;
+    card.textContent = showLabels ? item.label || '' : '';
     card.dataset.imageId = item.id;
     if (item.src) {
       card.style.backgroundImage = `url(${item.src})`;
@@ -548,11 +619,28 @@ const wireCard = (card) => {
   card.addEventListener('dragstart', (event) => {
     dismissPopupsForDrag();
     event.dataTransfer.setData('text/plain', card.id);
+    card.classList.add('is-dragging');
+    const ghostCfg = getGhostConfig();
+    if (ghostCfg.enabled) {
+      const ghost = buildDragGhost(card);
+      document.body.appendChild(ghost);
+      const rect = ghost.getBoundingClientRect();
+      event.dataTransfer.setDragImage(ghost, rect.width / 2, rect.height / 2);
+      card._dragGhost = ghost;
+    }
+    if (getDragConfig().hideSource) {
+      card.style.opacity = '0';
+    }
   });
 
   card.addEventListener('dragend', () => {
     card.classList.remove('is-dragging');
     clearOver();
+    if (card._dragGhost) {
+      card._dragGhost.remove();
+      card._dragGhost = null;
+    }
+    card.style.opacity = '';
   });
 
   card.addEventListener('pointerdown', (event) => {
@@ -563,13 +651,11 @@ const wireCard = (card) => {
     state.pointer.active = true;
     state.pointer.card = card;
     card.classList.add('is-dragging');
+    if (getDragConfig().hideSource) {
+      card.style.opacity = '0';
+    }
 
-    const ghost = document.createElement('div');
-    ghost.className = 'drag-ghost';
-    ghost.style.width = card.offsetWidth + 'px';
-    ghost.style.height = card.offsetHeight + 'px';
-    ghost.style.backgroundColor = card.style.backgroundColor;
-    ghost.style.backgroundImage = card.style.backgroundImage;
+    const ghost = buildDragGhost(card);
     document.body.appendChild(ghost);
 
     state.pointer.ghost = ghost;
@@ -593,6 +679,7 @@ const wireCard = (card) => {
     const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.dropzone');
     if (target) handleDrop(card, target);
     card.classList.remove('is-dragging');
+    card.style.opacity = '';
     state.pointer.ghost?.remove();
     state.pointer.active = false;
     state.pointer.card = null;
