@@ -111,7 +111,8 @@
       "size": {
         "width": 1251,
         "height": 319
-      }
+      },
+      "dismissDelay": 2000
     }
   },
   "layout": {
@@ -455,6 +456,8 @@
       {
         "zones": [
           "13"
+        ],"images": [
+          "img-8"
         ],
         "popup": {
           "src": "images/textes-popup/pop.loupe.AlimentsPoubelle.png"
@@ -522,7 +525,7 @@
           "14"
         ],
         "popup": {
-          "src": "images/textes-popup/pop.Poubelle.png"
+          "src": "images/textes-popup/pop.Compost.png"
         }
       },
       "img-9": [
@@ -546,9 +549,14 @@
           "src": "images/textes-popup/pop.Oeufs.png"
         }
       },
-      "img-13": [
-        "11"
-      ],
+      "img-13": {
+        "zones": [
+          "11"
+        ],
+        "popup": {
+          "src": "images/textes-popup/pop.Fruits.png"
+        }
+      },
       "img-14": [
         "7"
       ],
@@ -567,7 +575,7 @@
           "14"
         ],
         "popup": {
-          "src": "images/textes-popup/pop.Compost.png"
+          "src": ""
         }
       },
       "img-17": [

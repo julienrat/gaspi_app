@@ -15,7 +15,7 @@ const state = {
   completedByButton: new Map(),
   completedButtons: new Set(),
   placements: new Map(),
-  popup: { visible: false, queue: [] },
+  popup: { visible: false, queue: [], hideCurrent: null, suppressOnHide: false },
   started: false,
   finished: false,
   completed: new Set(),
@@ -152,20 +152,23 @@ const showPopupGroup = (popups, options = {}) => {
 
   state.popup.visible = true;
   const type = options.type || 'wrong';
-  const dismissOnAny = options.dismissOnAny ?? (type === 'wrong');
+  const dismissOnAny = options.dismissOnAny ?? true;
   const dismissOnSelf = options.dismissOnSelf ?? (type === 'correct');
 
   const hide = () => {
     clearOverlay();
     state.popup.visible = false;
-    if (typeof options.onHide === 'function') {
+    if (!state.popup.suppressOnHide && typeof options.onHide === 'function') {
       options.onHide();
     }
+    state.popup.hideCurrent = null;
+    state.popup.suppressOnHide = false;
     if (state.popup.queue.length) {
       const next = state.popup.queue.shift();
       showPopupGroup(next.popups, next.options);
     }
   };
+  state.popup.hideCurrent = hide;
 
   if (dismissOnSelf) {
     images.forEach((img) => {
@@ -196,6 +199,19 @@ const showPopupGroup = (popups, options = {}) => {
 
 const showPopup = (popup, options = {}) => {
   showPopupGroup(popup, options);
+};
+
+const dismissPopupsForDrag = () => {
+  if (!state.popup.visible && !state.popup.queue.length) return;
+  state.popup.queue = [];
+  state.popup.suppressOnHide = true;
+  if (state.popup.hideCurrent) {
+    state.popup.hideCurrent();
+  } else {
+    clearOverlay();
+    state.popup.visible = false;
+    state.popup.suppressOnHide = false;
+  }
 };
 
 const normalizeScreen = (screen) => {
@@ -256,7 +272,21 @@ const showFinishScreen = () => {
   state.popup.visible = false;
   state.finished = true;
   setUiVisible(false);
-  showScreen(finish);
+  const img = showScreen(finish);
+  if (!img) return;
+  const delay = finish.dismissDelay ?? 0;
+  img.style.pointerEvents = 'none';
+  window.setTimeout(() => {
+    img.style.pointerEvents = 'auto';
+    img.addEventListener(
+      'pointerdown',
+      () => {
+        clearScreens();
+        window.location.href = '../index.html';
+      },
+      { once: true },
+    );
+  }, delay);
 };
 
 const buildButtons = (config) => {
@@ -477,13 +507,13 @@ const handleDrop = (card, zone) => {
             const img = buttonEl.querySelector('.action-btn__img');
             if (img && img.dataset.srcDisabled) img.src = img.dataset.srcDisabled;
           }
+
+          if (state.completedButtons.size === state.config.buttons.length) {
+            showFinishScreen();
+          }
         },
       });
     }
-  }
-
-  if (state.completed.size === state.config.images.items.length) {
-    showFinishScreen();
   }
 };
 
@@ -516,6 +546,7 @@ const wireCard = (card) => {
   card.setAttribute('draggable', 'true');
 
   card.addEventListener('dragstart', (event) => {
+    dismissPopupsForDrag();
     event.dataTransfer.setData('text/plain', card.id);
   });
 
@@ -527,6 +558,7 @@ const wireCard = (card) => {
   card.addEventListener('pointerdown', (event) => {
     if (event.pointerType === 'mouse') return;
     event.preventDefault();
+    dismissPopupsForDrag();
 
     state.pointer.active = true;
     state.pointer.card = card;

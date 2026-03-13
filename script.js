@@ -455,6 +455,8 @@ const updateTimerUI = () => {
 const popupState = {
   timeoutId: null,
   dismissHandler: null,
+  delayId: null,
+  onHide: null,
   visible: false,
   queue: [],
 };
@@ -507,10 +509,15 @@ const clearPopupHandlers = () => {
     clearTimeout(popupState.timeoutId);
     popupState.timeoutId = null;
   }
+  if (popupState.delayId) {
+    clearTimeout(popupState.delayId);
+    popupState.delayId = null;
+  }
   if (popupState.dismissHandler) {
     document.removeEventListener('pointerdown', popupState.dismissHandler, true);
     popupState.dismissHandler = null;
   }
+  popupState.onHide = null;
 };
 
 const hidePopup = () => {
@@ -518,6 +525,9 @@ const hidePopup = () => {
   if (!layer) return;
   layer.innerHTML = '';
   layer.style.pointerEvents = 'none';
+  if (typeof popupState.onHide === 'function') {
+    popupState.onHide();
+  }
   clearPopupHandlers();
   document.body.classList.remove('popup-visible');
   popupState.visible = false;
@@ -534,6 +544,13 @@ const hidePopup = () => {
     completionState.pendingCompletion = false;
     showCompletionPopup();
   }
+};
+
+const dismissPopupsForDrag = () => {
+  if (!popupState.visible && !popupState.queue.length) return;
+  popupState.queue = [];
+  popupState.onHide = null;
+  hidePopup();
 };
 
 const showPopup = (popup, options = {}) => {
@@ -567,32 +584,46 @@ const showPopup = (popup, options = {}) => {
   layer.appendChild(img);
   document.body.classList.add('popup-visible');
   popupState.visible = true;
+  popupState.onHide = typeof options.onHide === 'function' ? options.onHide : null;
 
   const popupType = options.type;
   const dismissOnAny =
     options.dismissOnAny ??
     normalized.dismissOnAny ??
-    (popupType === 'wrong' ? true : false);
+    true;
   const dismissOnSelf =
     options.dismissOnSelf ??
     normalized.dismissOnSelf ??
     (popupType === 'correct' ? true : false);
+  const dismissDelay = options.dismissDelay ?? normalized.dismissDelay ?? 0;
 
-  if (dismissOnSelf) {
-    img.addEventListener('pointerdown', (event) => {
-      event.stopPropagation();
-      hidePopup();
-    });
+  const bindDismissHandlers = () => {
+    if (dismissOnSelf) {
+      img.addEventListener('pointerdown', (event) => {
+        event.stopPropagation();
+        hidePopup();
+      });
+    }
+
+    if (dismissOnAny) {
+      popupState.dismissHandler = () => {
+        hidePopup();
+      };
+      document.addEventListener('pointerdown', popupState.dismissHandler, true);
+    }
+
+    layer.style.pointerEvents = dismissOnAny || dismissOnSelf ? 'auto' : 'none';
+  };
+
+  if (dismissDelay > 0) {
+    layer.style.pointerEvents = 'none';
+    popupState.delayId = window.setTimeout(() => {
+      popupState.delayId = null;
+      bindDismissHandlers();
+    }, dismissDelay);
+  } else {
+    bindDismissHandlers();
   }
-
-  if (dismissOnAny) {
-    popupState.dismissHandler = () => {
-      hidePopup();
-    };
-    document.addEventListener('pointerdown', popupState.dismissHandler, true);
-  }
-
-  layer.style.pointerEvents = dismissOnAny || dismissOnSelf ? 'auto' : 'none';
 
   let duration = normalized.duration ?? (popupType === 'correct' ? 0 : 1600);
   if (popupType === 'wrong') {
@@ -678,7 +709,15 @@ const showCompletionPopup = () => {
       dropImage.style.opacity = '0';
       dropImage.style.visibility = 'hidden';
     }
-    showPopup(completion, { type: 'correct', dismissOnAny: true, dismissOnSelf: true });
+    showPopup(completion, {
+      type: 'correct',
+      dismissOnAny: true,
+      dismissOnSelf: true,
+      dismissDelay: completion.dismissDelay ?? 0,
+      onHide: () => {
+        window.location.href = 'activity2/index.html';
+      },
+    });
   }
 };
 
@@ -1352,6 +1391,7 @@ const wireCard = (card) => {
       event.preventDefault();
       return;
     }
+    dismissPopupsForDrag();
 
     event.dataTransfer.setData('text/plain', card.id);
     event.dataTransfer.effectAllowed = 'move';
@@ -1414,6 +1454,7 @@ const wireCard = (card) => {
     if (event.pointerType === 'mouse') return;
     event.preventDefault();
     requestFullscreenOnce();
+    dismissPopupsForDrag();
 
     pointerDrag.active = true;
     pointerDrag.pointerId = event.pointerId;

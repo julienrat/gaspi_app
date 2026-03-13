@@ -15,7 +15,8 @@
     "finish": {
       "src": "3.screen_fin.png",
       "position": { "x": 960, "y": 600 },
-      "size": { "width": 1920, "height": 1200 }
+      "size": { "width": 1920, "height": 1200 },
+      "dismissDelay": 2000
     }
   },
   "layout": {
