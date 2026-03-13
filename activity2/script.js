@@ -556,6 +556,15 @@ const handleDrop = (card, zone) => {
         dismissOnSelf: true,
       });
     } else {
+      state.completedButtons.add(buttonId);
+      const buttonEl = buttonsEl.querySelector(`[data-button="${buttonId}"]`);
+      if (buttonEl) {
+        buttonEl.disabled = true;
+        buttonEl.classList.add('is-disabled');
+        const img = buttonEl.querySelector('.action-btn__img');
+        if (img && img.dataset.srcDisabled) img.src = img.dataset.srcDisabled;
+      }
+
       const chosenPopup = state.config.targets?.chosenPopup;
       showPopupGroup([perCard, chosenPopup].filter(Boolean), {
         type: 'correct',
@@ -569,15 +578,6 @@ const handleDrop = (card, zone) => {
               if (placedBtn === buttonId) placedCard.remove();
             });
           });
-
-          state.completedButtons.add(buttonId);
-          const buttonEl = buttonsEl.querySelector(`[data-button="${buttonId}"]`);
-          if (buttonEl) {
-            buttonEl.disabled = true;
-            buttonEl.classList.add('is-disabled');
-            const img = buttonEl.querySelector('.action-btn__img');
-            if (img && img.dataset.srcDisabled) img.src = img.dataset.srcDisabled;
-          }
 
           if (state.completedButtons.size === state.config.buttons.length) {
             showFinishScreen();
