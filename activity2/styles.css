@@ -95,6 +95,7 @@ body {
   position: absolute;
   inset: 0;
   z-index: 2;
+  pointer-events: none;
 }
 
 .action-btn {
@@ -106,6 +107,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  pointer-events: auto;
 }
 
 .action-btn.active {
@@ -121,8 +123,8 @@ body {
 .tray {
   position: absolute;
   inset: 0;
-  z-index: 2;
-  pointer-events: none;
+  z-index: 1;
+  pointer-events: auto;
 }
 
 .tray-frame {
@@ -155,15 +157,20 @@ body {
 }
 
 .card.is-dragging {
-  opacity: 1;
+  opacity: 0;
+  transform: none;
+  position: absolute;
+  top: -9999px;
+  left: -9999px;
 }
 
 .dropzones {
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
   display: grid;
   z-index: 2;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .dropzone {

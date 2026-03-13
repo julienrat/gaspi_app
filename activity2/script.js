@@ -5,6 +5,8 @@ const buttonsEl = document.querySelector('.buttons');
 const tray = document.querySelector('.tray');
 const dropzonesEl = document.querySelector('.dropzones');
 
+let fullscreenRequested = false;
+
 const state = {
   config: null,
   scaleX: 1,
@@ -27,6 +29,21 @@ const sy = (value) => value * state.scaleY;
 
 const setCssVar = (name, value) => {
   document.documentElement.style.setProperty(name, value);
+};
+
+const requestFullscreenOnce = async () => {
+  if (fullscreenRequested) return;
+  fullscreenRequested = true;
+  const root = document.documentElement;
+  try {
+    if (root.requestFullscreen) {
+      await root.requestFullscreen();
+    } else if (root.webkitRequestFullscreen) {
+      root.webkitRequestFullscreen();
+    }
+  } catch {
+    // Ignore if fullscreen is blocked by the browser.
+  }
 };
 
 const computeScale = (config) => {
@@ -319,6 +336,7 @@ const showScreen = (screen) => {
 const showIntroScreen = () => {
   const intro = state.config.screens?.intro;
   if (!intro?.src) {
+    requestFullscreenOnce();
     state.started = true;
     setUiVisible(true);
     return;
@@ -327,6 +345,7 @@ const showIntroScreen = () => {
   const img = showScreen(intro);
   if (!img) return;
   img.addEventListener('pointerdown', () => {
+    requestFullscreenOnce();
     clearScreens();
     state.started = true;
     setUiVisible(true);
@@ -401,15 +420,66 @@ const buildButtons = (config) => {
 
 const buildDropzones = (config) => {
   dropzonesEl.innerHTML = '';
-  const zones = config.layout?.dropzones?.zones || [];
-  zones.forEach((zoneCfg, idx) => {
+  const dz = config.layout?.dropzones || {};
+  const zones = dz.zones || [];
+  const screen = config.layout?.screen || { width: 1920, height: 1200 };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  const resolved = zones.map((zoneCfg, idx) => {
+    const width = zoneCfg.width ?? dz.defaultWidth ?? 240;
+    const height = zoneCfg.height ?? dz.defaultHeight ?? 180;
+    let x = zoneCfg.x;
+    let y = zoneCfg.y;
+
+    if (x == null) {
+      if (dz.left != null) {
+        x = dz.left;
+      } else if (dz.right != null) {
+        x = screen.width - dz.right - width;
+      } else {
+        x = 0;
+      }
+    }
+
+    if (y == null) {
+      const top = dz.top ?? 0;
+      const gap = dz.gap ?? 0;
+      y = top + idx * (height + gap);
+    }
+
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
+
+    return { cfg: zoneCfg, idx, x, y, width, height };
+  });
+
+  if (!Number.isFinite(minX)) {
+    minX = 0;
+    minY = 0;
+    maxX = 0;
+    maxY = 0;
+  }
+
+  dropzonesEl.style.left = `${sx(minX)}px`;
+  dropzonesEl.style.top = `${sy(minY)}px`;
+  dropzonesEl.style.right = 'auto';
+  dropzonesEl.style.bottom = 'auto';
+  dropzonesEl.style.width = `${sx(maxX - minX)}px`;
+  dropzonesEl.style.height = `${sy(maxY - minY)}px`;
+
+  resolved.forEach(({ cfg: zoneCfg, idx, x, y, width, height }) => {
     const zone = document.createElement('div');
     zone.className = 'dropzone';
     zone.dataset.zone = zoneCfg.id || String(idx + 1);
-    if (zoneCfg.width) zone.style.width = `${sx(zoneCfg.width)}px`;
-    if (zoneCfg.height) zone.style.height = `${sy(zoneCfg.height)}px`;
-    if (zoneCfg.x != null) zone.style.left = `${sx(zoneCfg.x)}px`;
-    if (zoneCfg.y != null) zone.style.top = `${sy(zoneCfg.y)}px`;
+    zone.style.width = `${sx(width)}px`;
+    zone.style.height = `${sy(height)}px`;
+    zone.style.left = `${sx(x - minX)}px`;
+    zone.style.top = `${sy(y - minY)}px`;
     zone.style.position = 'absolute';
     dropzonesEl.appendChild(zone);
   });
@@ -735,6 +805,7 @@ const handleResize = () => {
   applyLayout(state.config);
   buildButtons(state.config);
   buildDropzones(state.config);
+  wireDropzones();
   const active = state.activeButtonId || state.config.buttons[0]?.id;
   if (active) setActiveButton(active);
   if (!state.started) showIntroScreen();
