@@ -198,6 +198,11 @@
       "size": { "width": 739, "height": 233 },
       "position": { "x": 601.651, "y": 928.575 }
     },
+    "finishPopup": {
+      "src": "popup/popup.fin.alt_Transf-1.png",
+      "size": { "width": 739, "height": 233 },
+      "position": { "x": 601.651, "y": 928.575 }
+    },
     "correctPopups": {
       "img-1": {
         "src": "popup/popup.1.alt_Transf.tarte.png",

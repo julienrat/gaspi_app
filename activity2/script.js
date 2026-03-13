@@ -565,8 +565,12 @@ const handleDrop = (card, zone) => {
         if (img && img.dataset.srcDisabled) img.src = img.dataset.srcDisabled;
       }
 
+      const allDone = state.completedButtons.size === state.config.buttons.length;
       const chosenPopup = state.config.targets?.chosenPopup;
-      showPopupGroup([perCard, chosenPopup].filter(Boolean), {
+      const finishPopup = state.config.targets?.finishPopup;
+      const finalPopup = allDone ? finishPopup : chosenPopup;
+
+      showPopupGroup([perCard, finalPopup].filter(Boolean), {
         type: 'correct',
         dismissOnSelf: true,
         onHide: () => {
@@ -579,7 +583,7 @@ const handleDrop = (card, zone) => {
             });
           });
 
-          if (state.completedButtons.size === state.config.buttons.length) {
+          if (allDone) {
             showFinishScreen();
           }
         },
