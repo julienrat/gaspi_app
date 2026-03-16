@@ -39,6 +39,10 @@
   "debug": {
     "showZoneLabels": false
   },
+  "inactivity": {
+    "enabled": true,
+    "timeoutMs": 120000
+  },
   "startScreen": {
     "enabled": true,
     "startButtonSrc": "images/5.module.part1.0.png",

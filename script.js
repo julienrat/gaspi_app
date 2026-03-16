@@ -461,6 +461,10 @@ const popupState = {
   queue: [],
 };
 
+const inactivityState = {
+  timeoutId: null,
+};
+
 const getPopupLayer = () => {
   if (!overlay) return null;
   let layer = overlay.querySelector('.popup-layer');
@@ -518,6 +522,27 @@ const clearPopupHandlers = () => {
     popupState.dismissHandler = null;
   }
   popupState.onHide = null;
+};
+
+const resetInactivityTimer = () => {
+  const config = state.config?.inactivity;
+  if (!config?.enabled) return;
+  const timeoutMs = config.timeoutMs ?? 120000;
+  if (inactivityState.timeoutId) {
+    clearTimeout(inactivityState.timeoutId);
+  }
+  inactivityState.timeoutId = window.setTimeout(() => {
+    window.location.href = 'index.html';
+  }, timeoutMs);
+};
+
+const setupInactivityTracking = () => {
+  const config = state.config?.inactivity;
+  if (!config?.enabled) return;
+  resetInactivityTimer();
+  const handler = () => resetInactivityTimer();
+  document.addEventListener('pointerdown', handler, true);
+  document.addEventListener('touchstart', handler, true);
 };
 
 const hidePopup = () => {
@@ -2030,6 +2055,7 @@ const init = (config) => {
   applyConfig(config);
   ensureDragImageHost();
   clearOverlay();
+  setupInactivityTracking();
 
   document.addEventListener('pointerdown', requestFullscreenOnce, { once: true });
   document.addEventListener('touchend', requestFullscreenOnce, { once: true });

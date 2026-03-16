@@ -24,6 +24,10 @@ const state = {
   pointer: { active: false, card: null, ghost: null, offsetX: 0, offsetY: 0, overEl: null },
 };
 
+const inactivityState = {
+  timeoutId: null,
+};
+
 const sx = (value) => value * state.scaleX;
 const sy = (value) => value * state.scaleY;
 
@@ -131,6 +135,27 @@ const normalizePopup = (popup, defaults = {}) => {
   if (typeof popup === 'string') return { ...defaults, src: popup };
   if (typeof popup === 'object') return { ...defaults, ...popup };
   return null;
+};
+
+const resetInactivityTimer = () => {
+  const config = state.config?.inactivity;
+  if (!config?.enabled) return;
+  const timeoutMs = config.timeoutMs ?? 120000;
+  if (inactivityState.timeoutId) {
+    clearTimeout(inactivityState.timeoutId);
+  }
+  inactivityState.timeoutId = window.setTimeout(() => {
+    window.location.href = '../index.html';
+  }, timeoutMs);
+};
+
+const setupInactivityTracking = () => {
+  const config = state.config?.inactivity;
+  if (!config?.enabled) return;
+  resetInactivityTimer();
+  const handler = () => resetInactivityTimer();
+  document.addEventListener('pointerdown', handler, true);
+  document.addEventListener('touchstart', handler, true);
 };
 
 const showPopupGroup = (popups, options = {}) => {
@@ -786,6 +811,7 @@ const init = (config) => {
   state.finished = false;
   state.completed = new Set();
   applyLayout(config);
+  setupInactivityTracking();
   buildButtons(config);
   buildDropzones(config);
   buildCards(config);

@@ -54,6 +54,10 @@
       "scale": 1
     }
   },
+  "inactivity": {
+    "enabled": true,
+    "timeoutMs": 120000
+  },
   "cards": {
     "showLabels": false
   },
